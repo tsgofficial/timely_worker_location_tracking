@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:get/get.dart';
-import 'package:google_maps_pro/Screens/DetailedMapScreen.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
@@ -9,18 +7,16 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-class MapScreen extends StatefulWidget {
-  // final Completer<GoogleMapController> googleMapsController;
-  const MapScreen({
+class DetailedMapScreen extends StatefulWidget {
+  const DetailedMapScreen({
     super.key,
-    // required this.googleMapsController,
   });
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  State<DetailedMapScreen> createState() => _DetailedMapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _DetailedMapScreenState extends State<DetailedMapScreen> {
   @override
   void initState() {
     super.initState();
@@ -32,38 +28,23 @@ class _MapScreenState extends State<MapScreen> {
     polylinePoints = PolylinePoints();
     reqPermission();
     startTimer();
-    // setCustomMarker();
   }
-
-  // BitmapDescriptor startMarkerIcon = BitmapDescriptor.defaultMarker;
-
-  // BitmapDescriptor setCustomMarker() {
-  //   BitmapDescriptor.fromAssetImage(
-  //           const ImageConfiguration(), 'assets/location_marker.png')
-  //       .then((icon) {
-  //     setState(() {
-  //       startMarkerIcon = icon;
-  //     });
-  //   });
-  //   return startMarkerIcon;
-  // }
 
   static const _initialCameraPosition = CameraPosition(
     target: LatLng(47.913267683591876, 106.93390550530046),
     zoom: 16,
   );
 
-  // final Completer<GoogleMapController> _controller = Completer();
-
-  Marker startMarker = const Marker(
-    markerId: MarkerId('start_marker'),
-    position: LatLng(47.9158152853448, 106.93376786578456),
-    icon: BitmapDescriptor.defaultMarker,
+  final startMarker = Marker(
+    markerId: const MarkerId('start_marker'),
+    position: const LatLng(47.9158152853448, 106.93376786578456),
+    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
   );
+
   final endMarker = Marker(
     markerId: const MarkerId('end_marker'),
     position: const LatLng(47.91021052534569, 106.92997954979906),
-    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
   );
 
   late LatLng currentLocation;
@@ -82,7 +63,8 @@ class _MapScreenState extends State<MapScreen> {
   ];
   late PolylinePoints polylinePoints;
 
-  final Completer<GoogleMapController> _controller = Completer();
+  final Completer<GoogleMapController> _controller =
+      Completer<GoogleMapController>();
 
   double totalDistance = 0.0;
   double kmTotalDistance = 0.0;
@@ -109,7 +91,6 @@ class _MapScreenState extends State<MapScreen> {
       await Permission.location.request();
     } else if (status.isGranted) {
       getLocation();
-      // initLocationTracking();
     }
   }
 
@@ -147,11 +128,11 @@ class _MapScreenState extends State<MapScreen> {
     Timer(const Duration(seconds: 1), () {
       _elapsedTimeInSeconds++;
     });
-    var locationOptions = const LocationSettings(
-      accuracy: LocationAccuracy.medium,
-      distanceFilter: 1,
-      // timeLimit: Duration(seconds: 5),
-    );
+    // var locationOptions = const LocationSettings(
+    //   accuracy: LocationAccuracy.medium,
+    //   distanceFilter: 1,
+    // timeLimit: Duration(seconds: 5),
+    // );
 
     Position position = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.medium,
@@ -164,12 +145,6 @@ class _MapScreenState extends State<MapScreen> {
     };
     // socket.on('location', (data) => )
     socket.emit('location', locationData);
-    // setState(() {
-    //   _position = position;
-    //   polylineCoordinates.add(
-    //     LatLng(position.latitude, position.longitude),
-    //   );
-    // });
   }
 
   void setPolylines() {
@@ -185,28 +160,18 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  void goToCurrentLocation() async {
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.medium,
-    );
-
-    final controller = await _controller.future;
-    // LocationData locationData = await location.getLocation();
-    LatLng currentLocation = LatLng(position.latitude, position.longitude);
-    controller.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: currentLocation,
-          zoom: 18.0,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            '2023/03/05-nii yvsan zam',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
         body: Column(
           children: [
             Padding(
@@ -269,46 +234,25 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
             SizedBox(
-              height: MediaQuery.of(context).size.height * 0.7,
+              height: MediaQuery.of(context).size.height * 0.8,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 5.0,
                   vertical: 5,
                 ),
-                child: Stack(
-                  children: [
-                    GoogleMap(
-                      myLocationButtonEnabled: true,
-                      myLocationEnabled: true,
-                      markers: <Marker>{
-                        startMarker,
-                        endMarker,
-                      },
-                      onMapCreated: (GoogleMapController controller) {
-                        _controller.complete(controller);
-                        getLocation();
-                        setPolylines();
-                        estimateDistance();
-                      },
-                      polylines: _polylines,
-                      initialCameraPosition: _initialCameraPosition,
-                      mapType: MapType.normal,
-                    ),
-                    Positioned(
-                      top: 10,
-                      left: 10,
-                      child: IconButton(
-                        onPressed: () {
-                          Get.to(() => const DetailedMapScreen());
-                        },
-                        icon: const Icon(
-                          size: 35,
-                          Icons.zoom_in_map_outlined,
-                          color: Color(0xffF04262),
-                        ),
-                      ),
-                    ),
-                  ],
+                child: GoogleMap(
+                  myLocationButtonEnabled: true,
+                  myLocationEnabled: true,
+                  markers: <Marker>{startMarker, endMarker},
+                  onMapCreated: (GoogleMapController controller) {
+                    _controller.complete(controller);
+                    getLocation();
+                    setPolylines();
+                    estimateDistance();
+                  },
+                  polylines: _polylines,
+                  initialCameraPosition: _initialCameraPosition,
+                  mapType: MapType.normal,
                 ),
               ),
             ),
