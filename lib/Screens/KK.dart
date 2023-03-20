@@ -139,12 +139,12 @@ class _KkState extends State<Kk> {
                 color: const Color(0xff73BEB2),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.0),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
                 child: Column(
                   children: [
                     Row(
-                      children: [
+                      children: const [
                         Text(
                           'Niit yvj bui zam: ',
                           style: TextStyle(
@@ -164,7 +164,7 @@ class _KkState extends State<Kk> {
                       ],
                     ),
                     Row(
-                      children: [
+                      children: const [
                         Text(
                           'Niit yvj bui hugatsaa: ',
                           style: TextStyle(

@@ -122,26 +122,26 @@ class _MapScreenState extends State<MapScreen> {
 
   int _elapsedTimeInSeconds = 0;
 
-  void estimateTimeSpentMoreThan30Minutes() {
-    Timer(const Duration(seconds: 1), () {
-      setState(() {
-        _elapsedTimeInSeconds++;
-      });
-    });
+  // void estimateTimeSpentMoreThan30Minutes() {
+  //   Timer(const Duration(seconds: 1), () {
+  //     setState(() {
+  //       _elapsedTimeInSeconds++;
+  //     });
+  //   });
 
-    for (int i = 0; i < polylineCoordinates.length - 1; i++) {
-      LatLng p1 = polylineCoordinates[i];
-      LatLng p2 = polylineCoordinates[i + 1];
-      double distance = Geolocator.distanceBetween(
-          p1.latitude, p1.longitude, p2.latitude, p2.longitude);
-      totalDistance += distance;
-      kmTotalDistance = totalDistance / 1000;
+  //   for (int i = 0; i < polylineCoordinates.length - 1; i++) {
+  //     LatLng p1 = polylineCoordinates[i];
+  //     LatLng p2 = polylineCoordinates[i + 1];
+  //     double distance = Geolocator.distanceBetween(
+  //         p1.latitude, p1.longitude, p2.latitude, p2.longitude);
+  //     totalDistance += distance;
+  //     kmTotalDistance = totalDistance / 1000;
 
-      if (totalDistance > 50 && _elapsedTimeInSeconds > 30 * 60) {
-        print(totalDistance);
-      }
-    }
-  }
+  //     if (totalDistance > 50 && _elapsedTimeInSeconds > 30 * 60) {
+  //       print(totalDistance);
+  //     }
+  //   }
+  // }
 
   void getLocation() async {
     Timer(const Duration(seconds: 1), () {
@@ -150,7 +150,6 @@ class _MapScreenState extends State<MapScreen> {
     var locationOptions = const LocationSettings(
       accuracy: LocationAccuracy.medium,
       distanceFilter: 1,
-      // timeLimit: Duration(seconds: 5),
     );
 
     Position position = await Geolocator.getCurrentPosition(
@@ -162,14 +161,7 @@ class _MapScreenState extends State<MapScreen> {
       'latitude': position.latitude,
       'longitude': position.longitude,
     };
-    // socket.on('location', (data) => )
     socket.emit('location', locationData);
-    // setState(() {
-    //   _position = position;
-    //   polylineCoordinates.add(
-    //     LatLng(position.latitude, position.longitude),
-    //   );
-    // });
   }
 
   void setPolylines() {
@@ -183,24 +175,6 @@ class _MapScreenState extends State<MapScreen> {
         ),
       );
     });
-  }
-
-  void goToCurrentLocation() async {
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.medium,
-    );
-
-    final controller = await _controller.future;
-    // LocationData locationData = await location.getLocation();
-    LatLng currentLocation = LatLng(position.latitude, position.longitude);
-    controller.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: currentLocation,
-          zoom: 18.0,
-        ),
-      ),
-    );
   }
 
   @override
@@ -219,12 +193,12 @@ class _MapScreenState extends State<MapScreen> {
                   color: const Color(0xff73BEB2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.0),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: Column(
                     children: [
                       Row(
-                        children: [
+                        children: const [
                           Text(
                             'Niit yvj bui zam: ',
                             style: TextStyle(
@@ -244,7 +218,7 @@ class _MapScreenState extends State<MapScreen> {
                         ],
                       ),
                       Row(
-                        children: [
+                        children: const [
                           Text(
                             'Niit yvj bui hugatsaa: ',
                             style: TextStyle(

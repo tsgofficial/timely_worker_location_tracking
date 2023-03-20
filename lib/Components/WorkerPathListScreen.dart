@@ -26,11 +26,11 @@ class _WorkerPathListState extends State<WorkerPathList> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
+              Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     '2023/03/05',
                     style: TextStyle(
                       fontSize: 16,
@@ -38,7 +38,7 @@ class _WorkerPathListState extends State<WorkerPathList> {
                     ),
                   ),
                   Row(
-                    children: [
+                    children: const [
                       Text(
                         'Garig: ',
                         style: TextStyle(
@@ -55,7 +55,7 @@ class _WorkerPathListState extends State<WorkerPathList> {
                       ),
                     ],
                   ),
-                  Text(
+                  const Text(
                     'Niit yvsan: ',
                     style: TextStyle(
                       color: Colors.grey,

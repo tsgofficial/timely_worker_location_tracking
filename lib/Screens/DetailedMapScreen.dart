@@ -110,17 +110,19 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
       });
     });
 
-    for (int i = 0; i < polylineCoordinates.length - 1; i++) {
+    for (int i = 0; i < polylineCoordinates.length; i++) {
       LatLng p1 = polylineCoordinates[i];
       LatLng p2 = polylineCoordinates[i + 1];
       double distance = Geolocator.distanceBetween(
           p1.latitude, p1.longitude, p2.latitude, p2.longitude);
       totalDistance += distance;
-      kmTotalDistance = totalDistance / 1000;
+      // kmTotalDistance = totalDistance / 1000;
 
-      if (totalDistance > 50 && _elapsedTimeInSeconds > 30 * 60) {
-        print(totalDistance);
-      }
+      if (distance >= 10) {}
+
+      // if (totalDistance > 50 && _elapsedTimeInSeconds > 30 * 60) {
+      //   print(totalDistance);
+      // }
     }
   }
 
@@ -184,12 +186,12 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
                   color: const Color(0xff73BEB2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.0),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: Column(
                     children: [
                       Row(
-                        children: [
+                        children: const [
                           Text(
                             'Niit yvj bui zam: ',
                             style: TextStyle(
@@ -209,7 +211,7 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
                         ],
                       ),
                       Row(
-                        children: [
+                        children: const [
                           Text(
                             'Niit yvj bui hugatsaa: ',
                             style: TextStyle(
