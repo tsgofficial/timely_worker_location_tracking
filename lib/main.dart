@@ -6,7 +6,6 @@ import 'package:google_maps_pro/Screens/HomePage.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   GetLocSocketEmit().reqPermission();
-  // GetLocSocketEmit().initSocket();
   runApp(const MyApp());
 }
 

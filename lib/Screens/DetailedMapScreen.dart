@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class DetailedMapScreen extends StatefulWidget {
   const DetailedMapScreen({
@@ -17,18 +16,18 @@ class DetailedMapScreen extends StatefulWidget {
 }
 
 class _DetailedMapScreenState extends State<DetailedMapScreen> {
-  @override
-  void initState() {
-    super.initState();
-    estimateDistance();
-    polylinePoints = PolylinePoints();
-    socket = IO.io('http://localhost:3000', <String, dynamic>{
-      'transports': ['websocket'],
-    });
-    polylinePoints = PolylinePoints();
-    reqPermission();
-    startTimer();
-  }
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   estimateDistance();
+  //   polylinePoints = PolylinePoints();
+  //   socket = IO.io('http://localhost:3000', <String, dynamic>{
+  //     'transports': ['websocket'],
+  //   });
+  //   polylinePoints = PolylinePoints();
+  //   reqPermission();
+  //   startTimer();
+  // }
 
   static const _initialCameraPosition = CameraPosition(
     target: LatLng(47.913267683591876, 106.93390550530046),
@@ -85,19 +84,19 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
     startTimer();
   }
 
-  void reqPermission() async {
-    var status = await Permission.location.status;
-    if (status.isDenied || status.isPermanentlyDenied) {
-      await Permission.location.request();
-    } else if (status.isGranted) {
-      getLocation();
-    }
-  }
+  // void reqPermission() async {
+  //   var status = await Permission.location.status;
+  //   if (status.isDenied || status.isPermanentlyDenied) {
+  //     await Permission.location.request();
+  //   } else if (status.isGranted) {
+  //     getLocation();
+  //   }
+  // }
 
   void startTimer() {
     const Duration duration = Duration(seconds: 5);
     Timer.periodic(duration, (Timer timer) {
-      getLocation();
+      // getLocation();
     });
   }
 
@@ -126,28 +125,28 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
     }
   }
 
-  void getLocation() async {
-    Timer(const Duration(seconds: 1), () {
-      _elapsedTimeInSeconds++;
-    });
-    // var locationOptions = const LocationSettings(
-    //   accuracy: LocationAccuracy.medium,
-    //   distanceFilter: 1,
-    // timeLimit: Duration(seconds: 5),
-    // );
+  // void getLocation() async {
+  //   Timer(const Duration(seconds: 1), () {
+  //     _elapsedTimeInSeconds++;
+  //   });
+  //   // var locationOptions = const LocationSettings(
+  //   //   accuracy: LocationAccuracy.medium,
+  //   //   distanceFilter: 1,
+  //   // timeLimit: Duration(seconds: 5),
+  //   // );
 
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.medium,
-    );
-    print('kkkkkkk ${position.latitude} ${position.longitude}');
-    var locationData = {
-      'timeInSeconds': _elapsedTimeInSeconds,
-      'latitude': position.latitude,
-      'longitude': position.longitude,
-    };
-    // socket.on('location', (data) => )
-    socket.emit('location', locationData);
-  }
+  //   Position position = await Geolocator.getCurrentPosition(
+  //     desiredAccuracy: LocationAccuracy.medium,
+  //   );
+  //   print('kkkkkkk ${position.latitude} ${position.longitude}');
+  //   var locationData = {
+  //     'timeInSeconds': _elapsedTimeInSeconds,
+  //     'latitude': position.latitude,
+  //     'longitude': position.longitude,
+  //   };
+  //   // socket.on('location', (data) => )
+  //   socket.emit('location', locationData);
+  // }
 
   void setPolylines() {
     setState(() {
@@ -248,7 +247,7 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
                   markers: <Marker>{startMarker, endMarker},
                   onMapCreated: (GoogleMapController controller) {
                     _controller.complete(controller);
-                    getLocation();
+                    // getLocation();
                     setPolylines();
                     estimateDistance();
                   },

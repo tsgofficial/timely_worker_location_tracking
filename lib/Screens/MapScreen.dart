@@ -2,12 +2,8 @@ import 'dart:async';
 
 import 'package:get/get.dart';
 import 'package:google_maps_pro/Screens/DetailedMapScreen.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter/material.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class MapScreen extends StatefulWidget {
   // final Completer<GoogleMapController> googleMapsController;
@@ -21,106 +17,105 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  @override
-  void initState() {
-    super.initState();
-    estimateDistance();
-    polylinePoints = PolylinePoints();
-    socket = IO.io('http://localhost:3000', <String, dynamic>{
-      'transports': ['websocket'],
-    });
-    polylinePoints = PolylinePoints();
-    reqPermission();
-    startTimer();
-    // setCustomMarker();
-  }
-
-  // BitmapDescriptor startMarkerIcon = BitmapDescriptor.defaultMarker;
-
-  // BitmapDescriptor setCustomMarker() {
-  //   BitmapDescriptor.fromAssetImage(
-  //           const ImageConfiguration(), 'assets/location_marker.png')
-  //       .then((icon) {
-  //     setState(() {
-  //       startMarkerIcon = icon;
-  //     });
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   estimateDistance();
+  //   polylinePoints = PolylinePoints();
+  //   socket = IO.io('http://localhost:3000', <String, dynamic>{
+  //     'transports': ['websocket'],
   //   });
-  //   return startMarkerIcon;
+  //   polylinePoints = PolylinePoints();
+  //   reqPermission();
+  //   startTimer();
+  //   // setCustomMarker();
   // }
+
+  // // BitmapDescriptor startMarkerIcon = BitmapDescriptor.defaultMarker;
+
+  // // BitmapDescriptor setCustomMarker() {
+  // //   BitmapDescriptor.fromAssetImage(
+  // //           const ImageConfiguration(), 'assets/location_marker.png')
+  // //       .then((icon) {
+  // //     setState(() {
+  // //       startMarkerIcon = icon;
+  // //     });
+  // //   });
+  // //   return startMarkerIcon;
+  // // }
 
   static const _initialCameraPosition = CameraPosition(
     target: LatLng(47.913267683591876, 106.93390550530046),
     zoom: 16,
   );
+  final Completer<GoogleMapController> _controller = Completer();
 
   // final Completer<GoogleMapController> _controller = Completer();
 
-  Marker startMarker = const Marker(
-    markerId: MarkerId('start_marker'),
-    position: LatLng(47.9158152853448, 106.93376786578456),
-    icon: BitmapDescriptor.defaultMarker,
-  );
-  final endMarker = Marker(
-    markerId: const MarkerId('end_marker'),
-    position: const LatLng(47.91021052534569, 106.92997954979906),
-    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
-  );
+  // Marker startMarker = const Marker(
+  //   markerId: MarkerId('start_marker'),
+  //   position: LatLng(47.9158152853448, 106.93376786578456),
+  //   icon: BitmapDescriptor.defaultMarker,
+  // );
+  // final endMarker = Marker(
+  //   markerId: const MarkerId('end_marker'),
+  //   position: const LatLng(47.91021052534569, 106.92997954979906),
+  //   icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+  // );
 
-  late LatLng currentLocation;
-  late LatLng destinationLocation;
-  late IO.Socket socket;
-  Position? _position;
+  // late LatLng currentLocation;
+  // late LatLng destinationLocation;
+  // late IO.Socket socket;
+  // Position? _position;
 
-  final Set<Polyline> _polylines = <Polyline>{};
-  List<LatLng> polylineCoordinates = [
-    const LatLng(47.9158152853448, 106.93376786578456),
-    const LatLng(47.9135184996836, 106.93161033287103),
-    const LatLng(47.91325962236222, 106.93525813711095),
-    const LatLng(47.91236792389759, 106.93105243339903),
-    const LatLng(47.91193645138233, 106.92963622704706),
-    const LatLng(47.91021052534569, 106.92997954979906),
-  ];
-  late PolylinePoints polylinePoints;
+  // final Set<Polyline> _polylines = <Polyline>{};
+  // List<LatLng> polylineCoordinates = [
+  //   const LatLng(47.9158152853448, 106.93376786578456),
+  //   const LatLng(47.9135184996836, 106.93161033287103),
+  //   const LatLng(47.91325962236222, 106.93525813711095),
+  //   const LatLng(47.91236792389759, 106.93105243339903),
+  //   const LatLng(47.91193645138233, 106.92963622704706),
+  //   const LatLng(47.91021052534569, 106.92997954979906),
+  // ];
+  // late PolylinePoints polylinePoints;
 
-  final Completer<GoogleMapController> _controller = Completer();
+  // double totalDistance = 0.0;
+  // double kmTotalDistance = 0.0;
+  // void estimateDistance() {
+  //   for (int i = 0; i < polylineCoordinates.length - 1; i++) {
+  //     LatLng p1 = polylineCoordinates[i];
+  //     LatLng p2 = polylineCoordinates[i + 1];
+  //     double distance = Geolocator.distanceBetween(
+  //         p1.latitude, p1.longitude, p2.latitude, p2.longitude);
+  //     totalDistance += distance;
+  //     kmTotalDistance = totalDistance / 1000;
+  //   }
+  // }
 
-  double totalDistance = 0.0;
-  double kmTotalDistance = 0.0;
-  void estimateDistance() {
-    for (int i = 0; i < polylineCoordinates.length - 1; i++) {
-      LatLng p1 = polylineCoordinates[i];
-      LatLng p2 = polylineCoordinates[i + 1];
-      double distance = Geolocator.distanceBetween(
-          p1.latitude, p1.longitude, p2.latitude, p2.longitude);
-      totalDistance += distance;
-      kmTotalDistance = totalDistance / 1000;
-    }
-  }
+  // @override
+  // void dispose() {
+  //   super.dispose();
+  //   startTimer();
+  // }
 
-  @override
-  void dispose() {
-    super.dispose();
-    startTimer();
-  }
+  // void reqPermission() async {
+  //   var status = await Permission.location.status;
+  //   if (status.isDenied || status.isPermanentlyDenied) {
+  //     await Permission.location.request();
+  //   } else if (status.isGranted) {
+  //     getLocation();
+  //     // initLocationTracking();
+  //   }
+  // }
 
-  void reqPermission() async {
-    var status = await Permission.location.status;
-    if (status.isDenied || status.isPermanentlyDenied) {
-      await Permission.location.request();
-    } else if (status.isGranted) {
-      getLocation();
-      // initLocationTracking();
-    }
-  }
+  // void startTimer() {
+  //   const Duration duration = Duration(seconds: 5);
+  //   Timer.periodic(duration, (Timer timer) {
+  //     getLocation();
+  //   });
+  // }
 
-  void startTimer() {
-    const Duration duration = Duration(seconds: 5);
-    Timer.periodic(duration, (Timer timer) {
-      getLocation();
-    });
-  }
-
-  int _elapsedTimeInSeconds = 0;
+  // final int _elapsedTimeInSeconds = 0;
 
   // void estimateTimeSpentMoreThan30Minutes() {
   //   Timer(const Duration(seconds: 1), () {
@@ -143,39 +138,39 @@ class _MapScreenState extends State<MapScreen> {
   //   }
   // }
 
-  void getLocation() async {
-    Timer(const Duration(seconds: 1), () {
-      _elapsedTimeInSeconds++;
-    });
-    var locationOptions = const LocationSettings(
-      accuracy: LocationAccuracy.medium,
-      distanceFilter: 1,
-    );
+  // void getLocation() async {
+  //   Timer(const Duration(seconds: 1), () {
+  //     _elapsedTimeInSeconds++;
+  //   });
+  //   var locationOptions = const LocationSettings(
+  //     accuracy: LocationAccuracy.medium,
+  //     distanceFilter: 1,
+  //   );
 
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.medium,
-    );
-    print('kkkkkkk ${position.latitude} ${position.longitude}');
-    var locationData = {
-      'timeInSeconds': _elapsedTimeInSeconds,
-      'latitude': position.latitude,
-      'longitude': position.longitude,
-    };
-    socket.emit('location', locationData);
-  }
+  //   Position position = await Geolocator.getCurrentPosition(
+  //     desiredAccuracy: LocationAccuracy.medium,
+  //   );
+  //   print('kkkkkkk ${position.latitude} ${position.longitude}');
+  //   var locationData = {
+  //     'timeInSeconds': _elapsedTimeInSeconds,
+  //     'latitude': position.latitude,
+  //     'longitude': position.longitude,
+  //   };
+  //   socket.emit('location', locationData);
+  // }
 
-  void setPolylines() {
-    setState(() {
-      _polylines.add(
-        Polyline(
-          color: const Color(0xffF9A529),
-          width: 7,
-          polylineId: const PolylineId('polyline_id'),
-          points: polylineCoordinates,
-        ),
-      );
-    });
-  }
+  // void setPolylines() {
+  //   setState(() {
+  //     _polylines.add(
+  //       Polyline(
+  //         color: const Color(0xffF9A529),
+  //         width: 7,
+  //         polylineId: const PolylineId('polyline_id'),
+  //         points: polylineCoordinates,
+  //       ),
+  //     );
+  //   });
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -254,17 +249,17 @@ class _MapScreenState extends State<MapScreen> {
                     GoogleMap(
                       myLocationButtonEnabled: true,
                       myLocationEnabled: true,
-                      markers: <Marker>{
-                        startMarker,
-                        endMarker,
-                      },
+                      // markers: <Marker>{
+                      //   startMarker,
+                      //   endMarker,
+                      // },
                       onMapCreated: (GoogleMapController controller) {
                         _controller.complete(controller);
-                        getLocation();
-                        setPolylines();
-                        estimateDistance();
+                        // getLocation();
+                        // setPolylines();
+                        // estimateDistance();
                       },
-                      polylines: _polylines,
+                      // polylines: _polylines,
                       initialCameraPosition: _initialCameraPosition,
                       mapType: MapType.normal,
                     ),
