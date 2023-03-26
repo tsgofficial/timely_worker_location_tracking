@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_pro/Screens/KK.dart';
-import 'package:google_maps_pro/Screens/MapScreen.dart';
+import 'package:google_maps_pro/Screens/TabbarScreens/KK.dart';
+import 'package:google_maps_pro/Screens/TabbarScreens/MapScreen.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class RootScreen extends StatefulWidget {
+  const RootScreen({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<RootScreen> createState() => _RootScreenState();
 }
 
-class _HomePageState extends State<HomePage>
+class _RootScreenState extends State<RootScreen>
     with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
   late final TabController _tabController =
       TabController(length: 2, vsync: this);
@@ -26,17 +26,17 @@ class _HomePageState extends State<HomePage>
     super.build(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hiiiiiiiiiiiiiiiiiii'),
+        title: const Text('Таны явсан түүх'),
         bottom: TabBar(
           labelColor: const Color(0xffF9A529),
           indicatorColor: const Color(0xffF9A529),
           controller: _tabController,
           tabs: const [
             Tab(
-              text: 'Onoodriin yvj bui zam',
+              text: 'Өнөөдрийн явж буй',
             ),
             Tab(
-              text: 'Niit yvsan',
+              text: 'Өдрөөр хайх',
             ),
           ],
         ),

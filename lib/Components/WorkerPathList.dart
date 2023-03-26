@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../Screens/DetailedMapScreen.dart';
+import '../Screens/OtherScreens/DetailedMapScreen.dart';
 
 class WorkerPathList extends StatefulWidget {
   const WorkerPathList({super.key});

@@ -84,69 +84,12 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
     startTimer();
   }
 
-  // void reqPermission() async {
-  //   var status = await Permission.location.status;
-  //   if (status.isDenied || status.isPermanentlyDenied) {
-  //     await Permission.location.request();
-  //   } else if (status.isGranted) {
-  //     getLocation();
-  //   }
-  // }
-
   void startTimer() {
     const Duration duration = Duration(seconds: 5);
     Timer.periodic(duration, (Timer timer) {
       // getLocation();
     });
   }
-
-  int _elapsedTimeInSeconds = 0;
-
-  void estimateTimeSpentMoreThan30Minutes() {
-    Timer(const Duration(seconds: 1), () {
-      setState(() {
-        _elapsedTimeInSeconds++;
-      });
-    });
-
-    for (int i = 0; i < polylineCoordinates.length; i++) {
-      LatLng p1 = polylineCoordinates[i];
-      LatLng p2 = polylineCoordinates[i + 1];
-      double distance = Geolocator.distanceBetween(
-          p1.latitude, p1.longitude, p2.latitude, p2.longitude);
-      totalDistance += distance;
-      // kmTotalDistance = totalDistance / 1000;
-
-      if (distance >= 10) {}
-
-      // if (totalDistance > 50 && _elapsedTimeInSeconds > 30 * 60) {
-      //   print(totalDistance);
-      // }
-    }
-  }
-
-  // void getLocation() async {
-  //   Timer(const Duration(seconds: 1), () {
-  //     _elapsedTimeInSeconds++;
-  //   });
-  //   // var locationOptions = const LocationSettings(
-  //   //   accuracy: LocationAccuracy.medium,
-  //   //   distanceFilter: 1,
-  //   // timeLimit: Duration(seconds: 5),
-  //   // );
-
-  //   Position position = await Geolocator.getCurrentPosition(
-  //     desiredAccuracy: LocationAccuracy.medium,
-  //   );
-  //   print('kkkkkkk ${position.latitude} ${position.longitude}');
-  //   var locationData = {
-  //     'timeInSeconds': _elapsedTimeInSeconds,
-  //     'latitude': position.latitude,
-  //     'longitude': position.longitude,
-  //   };
-  //   // socket.on('location', (data) => )
-  //   socket.emit('location', locationData);
-  // }
 
   void setPolylines() {
     setState(() {
