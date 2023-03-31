@@ -16,6 +16,7 @@ class GetLocSocketEmit {
   late LatLng secondaryPos;
   List<LatLng> locs = [];
   List<DateTime> dateTimes = [];
+  List<dynamic> locList = [];
   Duration duration = const Duration(seconds: 1);
   late Timer timer;
   final mapScreenController = Get.put(MapScreenController());
@@ -71,6 +72,7 @@ class GetLocSocketEmit {
     socket.connect();
     socket.onConnect((data) async {
       print('connected');
+      emitIfDeviceHasConnection();
       startTimer();
       Position location = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.best,
@@ -96,18 +98,18 @@ class GetLocSocketEmit {
       secondaryPos.latitude,
       secondaryPos.longitude,
     );
-    print('1 $initialPos');
-    print('2 $secondaryPos');
+    // print('1 $initialPos');
+    // print('2 $secondaryPos');
     if (mapScreenController.isDeviceConnected.value) {
       socketEmit();
-      emitIfDeviceHasConnection();
+      // emitIfDeviceHasConnection();
     } else if (!mapScreenController.isDeviceConnected.value) {
       saveLocInList();
     }
   }
 
   void socketEmit() {
-    if (controller.distance.value > 50) {
+    if (controller.distance.value > 25) {
       var locationData = {
         'latitude': secondaryPos.latitude,
         'longitude': secondaryPos.longitude,
@@ -117,7 +119,7 @@ class GetLocSocketEmit {
       socket.emit('location', locationData);
       resetTimer();
       initialPos = secondaryPos;
-      print('emitted some location kk');
+      print('socket emitted directly');
       print("time in seconds: ${controller.time.value}");
       print('distance ni: ${controller.distance.value}');
     }
@@ -125,32 +127,27 @@ class GetLocSocketEmit {
 
   void saveLocInList() {
     if (controller.distance.value > 1) {
-      locs.add(LatLng(secondaryPos.latitude, secondaryPos.longitude));
-      dateTimes.add(DateTime.now());
-      print('save locs in list latitude ${secondaryPos.latitude}');
-      print('save locs in list longitude ${secondaryPos.longitude}');
+      locList.add({
+        'latitude': secondaryPos.latitude,
+        'longitude': secondaryPos.longitude,
+        'stay_time': controller.time.value,
+        'user_id': 1,
+        'created_at': DateTime.now().toString(),
+      });
+      resetTimer();
       initialPos = secondaryPos;
+      print('saved locs in list ${locList.last}');
     }
   }
 
   // can be called when user press on the "Yvlaa" button cuz there will be always internet connection
   void emitIfDeviceHasConnection() {
-    if (locs.isNotEmpty) {
-      for (int i = 0; i < locs.length - 1; i++) {
-        var locationData = {
-          'latitude': locs[i].latitude,
-          'longitude': locs[i].longitude,
-          // 'stay_time': controller.time.value,
-          'user_id': 1,
-          'created_at': dateTimes[i].toString(),
-        };
-        socket.emit('location', locationData);
-        print('emitted some location from list');
-        print("time in seconds: ${dateTimes[i]}");
-        print('distance ni: ${controller.distance.value}');
+    if (locList.isNotEmpty) {
+      for (int i = 0; i < locList.length - 1; i++) {
+        socket.emit('location', locList[i]);
+        print('emitted some location from list ${locList[i]}');
       }
-      locs.clear();
-      dateTimes.clear();
+      locList.clear();
     }
   }
 }

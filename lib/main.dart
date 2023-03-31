@@ -14,12 +14,11 @@ void main() {
     (ConnectivityResult result) async {
       mapScreenController.isDeviceConnected.value =
           await InternetConnectionChecker().hasConnection;
-      // if (!mapScreenController.isDeviceConnected.value &&
-      //     mapScreenController.isAlertSet.value == false) {
-      //   mapScreenController.isAlertSet.value = true;
-      // }
     },
   );
+  if (mapScreenController.isDeviceConnected.value) {
+    // GetLocSocketEmit().emitIfDeviceHasConnection();
+  }
   runApp(MyApp());
 }
 
