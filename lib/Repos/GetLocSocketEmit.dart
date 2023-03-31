@@ -127,6 +127,8 @@ class GetLocSocketEmit {
     if (controller.distance.value > 1) {
       locs.add(LatLng(secondaryPos.latitude, secondaryPos.longitude));
       dateTimes.add(DateTime.now());
+      print('save locs in list latitude ${secondaryPos.latitude}');
+      print('save locs in list longitude ${secondaryPos.longitude}');
       initialPos = secondaryPos;
     }
   }
@@ -140,7 +142,7 @@ class GetLocSocketEmit {
           'longitude': locs[i].longitude,
           // 'stay_time': controller.time.value,
           'user_id': 1,
-          'date_time': dateTimes[i],
+          'created_at': dateTimes[i].toString(),
         };
         socket.emit('location', locationData);
         print('emitted some location from list');
