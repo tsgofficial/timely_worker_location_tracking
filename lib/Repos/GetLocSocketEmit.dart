@@ -2,9 +2,8 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:google_maps_pro/Controller/MapScreenController.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
-
-import 'package:permission_handler/permission_handler.dart';
 
 import '../Controller/SocketController.dart';
 
@@ -13,11 +12,39 @@ class GetLocSocketEmit {
   IO.Socket socket = IO.io('http://16.162.14.221:4000/', <String, dynamic>{
     'transports': ['websocket'],
   });
-
-  double totalDistance = 0;
-  List<LatLng> positionList = [];
+  late LatLng initialPos;
+  late LatLng secondaryPos;
+  List<LatLng> locs = [];
+  List<DateTime> dateTimes = [];
+  Duration duration = const Duration(seconds: 1);
   late Timer timer;
-  Future<void> determinePosition() async {
+  final mapScreenController = Get.put(MapScreenController());
+
+  void startTimer() {
+    timer = Timer.periodic(duration, (timer) {
+      controller.time.value++;
+    });
+  }
+
+  void resetTimer() {
+    timer.cancel();
+    controller.time.value = 0;
+    startTimer();
+  }
+
+  // should be called when user pressed on the "Irlee" button
+  void takeFirstLocation() {
+    var locationData = {
+      'latitude': initialPos.latitude,
+      'longitude': initialPos.longitude,
+      'stay_time': controller.time.value,
+      'user_id': 1,
+    };
+    socket.emit('location', locationData);
+    resetTimer();
+  }
+
+  Future<void> checkPermission() async {
     bool serviceEnabled;
     LocationPermission permission;
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -41,98 +68,87 @@ class GetLocSocketEmit {
   }
 
   Future<void> initSocket() async {
-    print('initing socket');
     socket.connect();
-    socket.onConnect((data) {
+    socket.onConnect((data) async {
       print('connected');
-      controller.startTimer();
+      startTimer();
+      Position location = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+      );
+      initialPos = LatLng(location.latitude, location.longitude);
+      takeFirstLocation();
+
       const Duration duration = Duration(seconds: 5);
       Timer.periodic(duration, (Timer timer) {
-        saveLoc();
+        getLoc();
       });
     });
-    if (socket.connected) {
-    } else {
-      print('not connected');
-    }
-    print('socket ${socket.connected}');
   }
 
-  Future<void> reqPermission() async {
-    // print('checked if per granted');
-    var status = await Permission.location.status;
-    if (status.isDenied || status.isPermanentlyDenied) {
-      await Permission.location.request();
-    } else if (status.isGranted) {
-      // saveLoc();
-      initSocket();
-    }
-  }
-
-  Future<void> saveLoc() async {
-    Position location = await Geolocator.getCurrentPosition();
-    positionList.add(
-      LatLng(location.latitude, location.longitude),
+  Future<void> getLoc() async {
+    Position location = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.best,
     );
-    socketEmitt();
-
-    print('location ni ${location.latitude} ${location.longitude}');
-    print('loc length fk ${positionList.length}');
-  }
-
-  void socketEmitt() {
-    var locationData = {
-      'latitude': positionList.last.latitude,
-      'longitude': positionList.last.longitude,
-      'stay_time': 0,
-      'user_id': 1,
-    };
-    socket.emit('location', locationData);
-    print('its working modafokaaaa');
-  }
-
-  void resetter() {
-    if (controller.totalDistance.value > 10) {
-      controller.totalDistance.value = 0;
-      controller.time.value = 0;
+    secondaryPos = LatLng(location.latitude, location.longitude);
+    controller.distance.value = Geolocator.distanceBetween(
+      initialPos.latitude,
+      initialPos.longitude,
+      secondaryPos.latitude,
+      secondaryPos.longitude,
+    );
+    print('1 $initialPos');
+    print('2 $secondaryPos');
+    if (mapScreenController.isDeviceConnected.value) {
+      socketEmit();
+      emitIfDeviceHasConnection();
+    } else if (!mapScreenController.isDeviceConnected.value) {
+      saveLocInList();
     }
   }
 
-  // void socketEmit() {
-  //   if (positionList.length == 1) {
-  //     var locationData = {
-  //       'latitude': positionList[0].latitude,
-  //       'longitude': positionList[0].longitude,
-  //       'stay_time': controller.time.value,
-  //       'user_id': 1,
-  //     };
-  //     socket.emit('location', locationData);
-  //     controller.resetTimer();
-  //     print('mmmmmmmmm ${controller.time.value}');
-  //     // _elapsedTimeInSeconds.res
-  //   } else if (positionList.length > 1) {
-  //     for (int i = 0; i < positionList.length - 1; i++) {
-  //       // LatLng initialPosition = positionList[0];
-  //       LatLng p1 = positionList[i];
-  //       LatLng p2 = positionList[i + 1];
-  //       controller.distance.value = Geolocator.distanceBetween(
-  //           p1.latitude, p1.longitude, p2.latitude, p2.longitude);
-  //       controller.totalDistance.value += controller.distance.value;
+  void socketEmit() {
+    if (controller.distance.value > 50) {
+      var locationData = {
+        'latitude': secondaryPos.latitude,
+        'longitude': secondaryPos.longitude,
+        'stay_time': controller.time.value,
+        'user_id': 1,
+      };
+      socket.emit('location', locationData);
+      resetTimer();
+      initialPos = secondaryPos;
+      print('emitted some location kk');
+      print("time in seconds: ${controller.time.value}");
+      print('distance ni: ${controller.distance.value}');
+    }
+  }
 
-  //       if (totalDistance >= 10.0000) {
-  //         // initialPosition = positionList[i + 1];
-  //         controller.totalDistance.value = 0;
-  //         var locationData = {
-  //           'latitude': positionList[i + 1].latitude,
-  //           'longitude': positionList[i + 1].longitude,
-  //           'stay_time': controller.time.value,
-  //           'user_id': 1,
-  //         };
-  //         socket.emit('location', locationData);
-  //         controller.resetTimer();
-  //         print('mmmmmmmmm ${controller.time.value}');
-  //       }
-  //     }
-  //   }
-  // }
+  void saveLocInList() {
+    if (controller.distance.value > 1) {
+      locs.add(LatLng(secondaryPos.latitude, secondaryPos.longitude));
+      dateTimes.add(DateTime.now());
+      initialPos = secondaryPos;
+    }
+  }
+
+  // can be called when user press on the "Yvlaa" button cuz there will be always internet connection
+  void emitIfDeviceHasConnection() {
+    if (locs.isNotEmpty) {
+      for (int i = 0; i < locs.length - 1; i++) {
+        var locationData = {
+          'latitude': locs[i].latitude,
+          'longitude': locs[i].longitude,
+          // 'stay_time': controller.time.value,
+          'user_id': 1,
+          'date_time': dateTimes[i],
+        };
+        socket.emit('location', locationData);
+        print('emitted some location from list');
+        print("time in seconds: ${dateTimes[i]}");
+        print('distance ni: ${controller.distance.value}');
+      }
+      locs.clear();
+      dateTimes.clear();
+    }
+  }
 }

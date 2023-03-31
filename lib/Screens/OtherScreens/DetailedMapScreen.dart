@@ -1,14 +1,23 @@
 import 'dart:async';
 
-import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter/material.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../Components/CustomColors.dart';
+import '../../Controller/GoogleMapsController.dart';
+import '../../Controller/LocationDataController.dart';
+
 class DetailedMapScreen extends StatefulWidget {
+  final DateTime date;
+  final double totalDistance;
+  final String totalTime;
   const DetailedMapScreen({
     super.key,
+    required this.date,
+    required this.totalDistance,
+    required this.totalTime,
   });
 
   @override
@@ -16,86 +25,106 @@ class DetailedMapScreen extends StatefulWidget {
 }
 
 class _DetailedMapScreenState extends State<DetailedMapScreen> {
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   estimateDistance();
-  //   polylinePoints = PolylinePoints();
-  //   socket = IO.io('http://localhost:3000', <String, dynamic>{
-  //     'transports': ['websocket'],
-  //   });
-  //   polylinePoints = PolylinePoints();
-  //   reqPermission();
-  //   startTimer();
-  // }
+  final controller = Get.put(LocationDataController());
+  final googleMapsController = Get.put(GoogleMapsController());
+  @override
+  void initState() {
+    super.initState();
+    // polylinePoints = PolylinePoints();
+    reqPermission();
+    getLocs();
+  }
 
-  static const _initialCameraPosition = CameraPosition(
-    target: LatLng(47.913267683591876, 106.93390550530046),
+  List<LatLng> polylineCoordinates = [];
+  bool isLoading = false;
+
+  void getLocs() {
+    googleMapsController.isLoading.value = true;
+    for (int i = 0; i < controller.locData.length - 1; i++) {
+      polylineCoordinates.add(
+        LatLng(
+          double.parse(controller.locData[i].latitude!),
+          double.parse(controller.locData[i].longitude!),
+        ),
+      );
+    }
+    setPolylines();
+    googleMapsController.isLoading.value = false;
+  }
+
+  late final CameraPosition _initialCameraPosition = CameraPosition(
+    target: LatLng(
+      double.parse(controller.locData.first.latitude!),
+      double.parse(controller.locData.first.longitude!),
+    ),
     zoom: 16,
   );
 
-  final startMarker = Marker(
+  late Marker startMarker = Marker(
     markerId: const MarkerId('start_marker'),
-    position: const LatLng(47.9158152853448, 106.93376786578456),
+    position: LatLng(
+      double.parse(controller.locData.first.latitude!),
+      double.parse(controller.locData.first.longitude!),
+    ),
     icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
   );
 
-  final endMarker = Marker(
-    markerId: const MarkerId('end_marker'),
-    position: const LatLng(47.91021052534569, 106.92997954979906),
-    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+  late Marker endMarker = Marker(
+    markerId: const MarkerId('start_marker'),
+    position: LatLng(
+      double.parse(controller.locData.last.latitude!),
+      double.parse(controller.locData.last.longitude!),
+    ),
+    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
   );
 
   late LatLng currentLocation;
   late LatLng destinationLocation;
-  late IO.Socket socket;
-  Position? _position;
 
   final Set<Polyline> _polylines = <Polyline>{};
-  List<LatLng> polylineCoordinates = [
-    const LatLng(47.9158152853448, 106.93376786578456),
-    const LatLng(47.9135184996836, 106.93161033287103),
-    const LatLng(47.91325962236222, 106.93525813711095),
-    const LatLng(47.91236792389759, 106.93105243339903),
-    const LatLng(47.91193645138233, 106.92963622704706),
-    const LatLng(47.91021052534569, 106.92997954979906),
-  ];
-  late PolylinePoints polylinePoints;
+  // late PolylinePoints polylinePoints;
 
   final Completer<GoogleMapController> _controller =
       Completer<GoogleMapController>();
 
-  double totalDistance = 0.0;
-  double kmTotalDistance = 0.0;
-  void estimateDistance() {
-    for (int i = 0; i < polylineCoordinates.length - 1; i++) {
-      LatLng p1 = polylineCoordinates[i];
-      LatLng p2 = polylineCoordinates[i + 1];
-      double distance = Geolocator.distanceBetween(
-          p1.latitude, p1.longitude, p2.latitude, p2.longitude);
-      totalDistance += distance;
-      kmTotalDistance = totalDistance / 1000;
+  Future<void> reqPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Location services are not enabled don't continue
+      // accessing the position and request users of the
+      // App to enable the location services.
+      return Future.error('Location services are disabled.');
     }
-  }
 
-  @override
-  void dispose() {
-    super.dispose();
-    startTimer();
-  }
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        // Permissions are denied, next time you could try
+        // requesting permissions again (this is also wheres
+        // Android's shouldShowRequestPermissionRationale
+        // returned true. According to Android guidelines
+        // your App should show an explanatory UI now.
+        return Future.error('Location permissions are denied');
+      }
+    }
 
-  void startTimer() {
-    const Duration duration = Duration(seconds: 5);
-    Timer.periodic(duration, (Timer timer) {
-      // getLocation();
-    });
+    if (permission == LocationPermission.deniedForever) {
+      // Permissions are denied forever, handle appropriately.
+      return Future.error(
+          'Location permissions are permanently denied, we cannot request permissions.');
+    }
   }
 
   void setPolylines() {
     setState(() {
       _polylines.add(
         Polyline(
-          color: const Color(0xffF9A529),
+          color: CustomColors.MAIN_BLUE,
           width: 7,
           polylineId: const PolylineId('polyline_id'),
           points: polylineCoordinates,
@@ -109,10 +138,19 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(
-            '2023/03/05-nii yvsan zam',
-            style: TextStyle(
+          shadowColor: Colors.grey,
+          elevation: 3, // set the elevation to create a shadow effect
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(
+                  20), // set the bottom radius to create a rounded effect
+            ),
+          ),
+          title: Text(
+            '${widget.date.toString().substring(0, 10)}-ны явсан зам',
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
+              fontSize: 18,
             ),
           ),
         ),
@@ -125,7 +163,7 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xff73BEB2),
+                  color: CustomColors.MAIN_BLUE,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Padding(
@@ -133,40 +171,41 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
                   child: Column(
                     children: [
                       Row(
-                        children: const [
-                          Text(
-                            'Niit yvj bui zam: ',
+                        children: [
+                          const Text(
+                            'Нийт явж буй зам: ',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
-                            '10 km',
-                            style: TextStyle(
+                            '${widget.totalDistance.toString().substring(0, 5)} км',
+                            style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
                       Row(
-                        children: const [
-                          Text(
-                            'Niit yvj bui hugatsaa: ',
+                        children: [
+                          const Text(
+                            'Нийт явж буй хугацаа: ',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
-                            '4h 6m',
-                            style: TextStyle(
+                            '${widget.totalTime.toString().substring(0, 1)} ц'
+                            ' ${widget.totalTime.toString().substring(2, 4)} м',
+                            style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -177,28 +216,36 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
                 ),
               ),
             ),
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.8,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 5.0,
-                  vertical: 5,
-                ),
-                child: GoogleMap(
-                  myLocationButtonEnabled: true,
-                  myLocationEnabled: true,
-                  markers: <Marker>{startMarker, endMarker},
-                  onMapCreated: (GoogleMapController controller) {
-                    _controller.complete(controller);
-                    // getLocation();
-                    setPolylines();
-                    estimateDistance();
-                  },
-                  polylines: _polylines,
-                  initialCameraPosition: _initialCameraPosition,
-                  mapType: MapType.normal,
-                ),
-              ),
+            Obx(
+              () => googleMapsController.isLoading.value
+                  ? const Center(
+                      child: CircularProgressIndicator(),
+                    )
+                  : SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.8,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5.0,
+                          vertical: 5,
+                        ),
+                        child: GoogleMap(
+                          myLocationButtonEnabled: true,
+                          myLocationEnabled: true,
+                          markers: <Marker>{
+                            startMarker,
+                            endMarker,
+                          },
+                          onMapCreated: (GoogleMapController controller) {
+                            _controller.complete(controller);
+                            // setPolylines();
+                            getLocs();
+                          },
+                          polylines: _polylines,
+                          initialCameraPosition: _initialCameraPosition,
+                          mapType: MapType.normal,
+                        ),
+                      ),
+                    ),
             ),
           ],
         ),

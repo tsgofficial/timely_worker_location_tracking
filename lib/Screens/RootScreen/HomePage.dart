@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_pro/Screens/TabbarScreens/KK.dart';
-import 'package:google_maps_pro/Screens/TabbarScreens/MapScreen.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
@@ -44,10 +42,8 @@ class _RootScreenState extends State<RootScreen>
       body: TabBarView(
         controller: _tabController,
         children: const [
-          MapScreen(
-              // googleMapsController: _controller,
-              ),
-          Kk(),
+          // MapScreen(),
+          // Kk(),
         ],
       ),
     );

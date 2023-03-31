@@ -2,20 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../Screens/OtherScreens/DetailedMapScreen.dart';
+import 'CustomColors.dart';
 
 class WorkerPathList extends StatefulWidget {
-  const WorkerPathList({super.key});
+  final DateTime date;
+  final double totalDistance;
+  final Duration difference;
+  final String day;
+  const WorkerPathList({
+    super.key,
+    required this.date,
+    required this.totalDistance,
+    required this.difference,
+    required this.day,
+  });
 
   @override
   State<WorkerPathList> createState() => _WorkerPathListState();
 }
 
 class _WorkerPathListState extends State<WorkerPathList> {
+  DateTime selectedDate = DateTime.now();
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
-        Get.to(() => const DetailedMapScreen());
+        Get.to(
+          () => DetailedMapScreen(
+            date: widget.date,
+            totalDistance: widget.totalDistance,
+            totalTime: widget.difference.toString(),
+          ),
+        );
       },
       child: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -30,33 +48,33 @@ class _WorkerPathListState extends State<WorkerPathList> {
                 mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '2023/03/05',
-                    style: TextStyle(
+                  Text(
+                    widget.date.toString().substring(0, 10),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Row(
-                    children: const [
-                      Text(
-                        'Garig: ',
+                    children: [
+                      const Text(
+                        'Гариг: ',
                         style: TextStyle(
                           color: Colors.grey,
                           // fontSize: 12,
                         ),
                       ),
                       Text(
-                        'Baasan',
-                        style: TextStyle(
-                          color: Colors.grey,
+                        widget.day,
+                        style: const TextStyle(
+                          color: Colors.grey, fontWeight: FontWeight.bold,
                           // fontSize: 12,
                         ),
                       ),
                     ],
                   ),
                   const Text(
-                    'Niit yvsan: ',
+                    'Нийт явсан: ',
                     style: TextStyle(
                       color: Colors.grey,
                       // fontSize: 12,
@@ -68,25 +86,38 @@ class _WorkerPathListState extends State<WorkerPathList> {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xffF04262),
+                      color: CustomColors.MAIN_BLUE,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 8.0, vertical: 15),
-                      child: Text('12.1 km'),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8.0, vertical: 15),
+                      child: Text(
+                        '${widget.totalDistance.toString().substring(0, 5)} км',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 5),
                   Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xffF9A529),
+                      color: CustomColors.MAIN_BLUE,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 8.0, vertical: 15),
-                      child: Text('5h 3m'),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8.0, vertical: 15),
+                      child: Text(
+                        '${widget.difference.toString().substring(0, 1)} ц'
+                        ' ${widget.difference.toString().substring(2, 4)} м',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 ],
