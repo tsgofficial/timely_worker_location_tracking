@@ -5,15 +5,15 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../../Components/CustomColors.dart';
-import '../../Controller/GoogleMapsController.dart';
-import '../../Controller/LocationDataController.dart';
+import '../Components/CustomColors.dart';
+import '../Controller/GoogleMapsController.dart';
+import '../Controller/LocationDataController.dart';
 
-class DetailedMapScreen extends StatefulWidget {
+class MapScreen extends StatefulWidget {
   final DateTime date;
   final double totalDistance;
   final String totalTime;
-  const DetailedMapScreen({
+  const MapScreen({
     super.key,
     required this.date,
     required this.totalDistance,
@@ -21,10 +21,10 @@ class DetailedMapScreen extends StatefulWidget {
   });
 
   @override
-  State<DetailedMapScreen> createState() => _DetailedMapScreenState();
+  State<MapScreen> createState() => MapScreenState();
 }
 
-class _DetailedMapScreenState extends State<DetailedMapScreen> {
+class MapScreenState extends State<MapScreen> {
   final controller = Get.put(LocationDataController());
   final googleMapsController = Get.put(GoogleMapsController());
   @override
@@ -40,11 +40,11 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
 
   void getLocs() {
     googleMapsController.isLoading.value = true;
-    for (int i = 0; i < controller.locData.length - 1; i++) {
+    for (int i = 0; i < controller.locList.length - 1; i++) {
       polylineCoordinates.add(
         LatLng(
-          double.parse(controller.locData[i].latitude!),
-          double.parse(controller.locData[i].longitude!),
+          double.parse(controller.locList[i].latitude!),
+          double.parse(controller.locList[i].longitude!),
         ),
       );
     }
@@ -54,8 +54,8 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
 
   late final CameraPosition _initialCameraPosition = CameraPosition(
     target: LatLng(
-      double.parse(controller.locData.first.latitude!),
-      double.parse(controller.locData.first.longitude!),
+      double.parse(controller.locList.first.latitude!),
+      double.parse(controller.locList.first.longitude!),
     ),
     zoom: 16,
   );
@@ -63,8 +63,8 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
   late Marker startMarker = Marker(
     markerId: const MarkerId('start_marker'),
     position: LatLng(
-      double.parse(controller.locData.first.latitude!),
-      double.parse(controller.locData.first.longitude!),
+      double.parse(controller.locList.first.latitude!),
+      double.parse(controller.locList.first.longitude!),
     ),
     icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
   );
@@ -72,8 +72,8 @@ class _DetailedMapScreenState extends State<DetailedMapScreen> {
   late Marker endMarker = Marker(
     markerId: const MarkerId('start_marker'),
     position: LatLng(
-      double.parse(controller.locData.last.latitude!),
-      double.parse(controller.locData.last.longitude!),
+      double.parse(controller.locList.last.latitude!),
+      double.parse(controller.locList.last.longitude!),
     ),
     icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
   );

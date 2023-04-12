@@ -34,16 +34,6 @@ class GetLocSocketEmit {
   }
 
   // should be called when user pressed on the "Irlee" button
-  void takeFirstLocation() {
-    var locationData = {
-      'latitude': initialPos.latitude,
-      'longitude': initialPos.longitude,
-      'stay_time': controller.time.value,
-      'user_id': 1,
-    };
-    socket.emit('location', locationData);
-    resetTimer();
-  }
 
   Future<void> checkPermission() async {
     bool serviceEnabled;
@@ -74,11 +64,15 @@ class GetLocSocketEmit {
       print('connected');
       emitIfDeviceHasConnection();
       startTimer();
-      Position location = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-      );
+      late Position location;
+      do {
+        location = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.best,
+        );
+      } while (location.accuracy > 10 && location.speed > 25);
+
       initialPos = LatLng(location.latitude, location.longitude);
-      takeFirstLocation();
+      emitFirstLocation();
 
       const Duration duration = Duration(seconds: 5);
       Timer.periodic(duration, (Timer timer) {
@@ -87,11 +81,28 @@ class GetLocSocketEmit {
     });
   }
 
+  void emitFirstLocation() {
+    var locationData = {
+      'latitude': initialPos.latitude,
+      'longitude': initialPos.longitude,
+      'stay_time': controller.time.value,
+      'user_id': 70872,
+    };
+    socket.emit('location', locationData);
+    resetTimer();
+  }
+
   Future<void> getLoc() async {
-    Position location = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.best,
-    );
+    late Position location;
+
+    do {
+      location = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+      );
+    } while (location.accuracy > 5 && location.speed > 20);
+
     secondaryPos = LatLng(location.latitude, location.longitude);
+
     controller.distance.value = Geolocator.distanceBetween(
       initialPos.latitude,
       initialPos.longitude,
@@ -103,40 +114,40 @@ class GetLocSocketEmit {
     if (mapScreenController.isDeviceConnected.value) {
       socketEmit();
       // emitIfDeviceHasConnection();
-    } else if (!mapScreenController.isDeviceConnected.value) {
+    } else {
       saveLocInList();
     }
   }
 
   void socketEmit() {
-    if (controller.distance.value > 25) {
+    if (controller.distance.value > 1) {
       var locationData = {
         'latitude': secondaryPos.latitude,
         'longitude': secondaryPos.longitude,
         'stay_time': controller.time.value,
-        'user_id': 1,
+        'user_id': 70872,
       };
       socket.emit('location', locationData);
-      resetTimer();
-      initialPos = secondaryPos;
       print('socket emitted directly');
       print("time in seconds: ${controller.time.value}");
       print('distance ni: ${controller.distance.value}');
+      initialPos = secondaryPos;
+      resetTimer();
     }
   }
 
   void saveLocInList() {
-    if (controller.distance.value > 1) {
+    if (controller.distance.value > 10) {
       locList.add({
         'latitude': secondaryPos.latitude,
         'longitude': secondaryPos.longitude,
         'stay_time': controller.time.value,
-        'user_id': 1,
+        'user_id': 70872,
         'created_at': DateTime.now().toString(),
       });
+      print('saved locs in list ${locList.last}');
       resetTimer();
       initialPos = secondaryPos;
-      print('saved locs in list ${locList.last}');
     }
   }
 

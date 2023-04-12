@@ -4,26 +4,24 @@ import 'package:google_maps_pro/Controller/LocationDataController.dart';
 import 'package:intl/intl.dart';
 
 class Functions {
-  final locDataController = Get.put(LocationDataController());
+  final locListController = Get.put(LocationDataController());
   double totalDistance = 0;
   double totalDistanceInMeter = 0;
 
   double calculateDistance() {
-    if (locDataController.locData.length != 1) {
-      for (int i = 0; i < locDataController.locData.length - 1; i++) {
+    if (locListController.locList.length != 1) {
+      for (int i = 0; i < locListController.locList.length - 1; i++) {
         var p1Lat =
-            double.parse(locDataController.locData[i].latitude.toString());
+            double.parse(locListController.locList[i].latitude.toString());
         var p1Lng =
-            double.parse(locDataController.locData[i].longitude.toString());
-        var p2Lat = double.parse(locDataController.locData[i + 1].latitude!);
-        var p2Lng = double.parse(locDataController.locData[i + 1].longitude!);
+            double.parse(locListController.locList[i].longitude.toString());
+        var p2Lat = double.parse(locListController.locList[i + 1].latitude!);
+        var p2Lng = double.parse(locListController.locList[i + 1].longitude!);
 
         double distance =
             Geolocator.distanceBetween(p1Lat, p1Lng, p2Lat, p2Lng);
         totalDistance += distance;
         totalDistanceInMeter = totalDistance / 1000;
-        // print(distance);
-        // print(locDataController.locData.length);
       }
       print('Total distance ${totalDistance / 1000}');
       return totalDistanceInMeter;
@@ -33,11 +31,11 @@ class Functions {
   }
 
   Duration calculateTime() {
-    if (locDataController.locData.length != 1) {
+    if (locListController.locList.length != 1) {
       DateTime date2 =
-          DateTime.parse(locDataController.locData.first.createdAt.toString());
+          DateTime.parse(locListController.locList.first.createdAt.toString());
       DateTime date1 =
-          DateTime.parse(locDataController.locData.last.createdAt.toString());
+          DateTime.parse(locListController.locList.last.createdAt.toString());
 
       Duration difference = date1.difference(date2);
       print('time difference $difference');
@@ -49,7 +47,7 @@ class Functions {
 
   String calculateDay() {
     DateTime dateTime =
-        DateTime.parse(locDataController.locData.last.date.toString());
+        DateTime.parse(locListController.locList.last.date.toString());
 
     String day = DateFormat('EEEE').format(dateTime);
     switch (day) {

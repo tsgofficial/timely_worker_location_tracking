@@ -5,20 +5,20 @@ import 'package:google_maps_pro/Components/WorkerPathList.dart';
 import 'package:google_maps_pro/Controller/LocationDataController.dart';
 import 'package:intl/intl.dart';
 
-import '../../Components/CustomColors.dart';
+import '../Components/CustomColors.dart';
 
-class Kk extends StatefulWidget {
+class SearchScreen extends StatefulWidget {
   final DateTime date;
-  const Kk({
+  const SearchScreen({
     super.key,
     required this.date,
   });
 
   @override
-  State<Kk> createState() => _KkState();
+  State<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _KkState extends State<Kk> {
+class _SearchScreenState extends State<SearchScreen> {
   // final locDataController = Get.put(LocationDataController());
   final locDataController = Get.put(LocationDataController());
   @override
@@ -60,9 +60,6 @@ class _KkState extends State<Kk> {
         _selectedDate = picked;
         isDateSubmitted = true;
       });
-      print('jjjjjjjj $_selectedDate');
-      print('wwwwww ${DateTime.now()}');
-      // locDataController.getLocData(64706, '1', 1, _selectedDate);
       locDataController.getLocData(
         64706,
         '1',
@@ -79,14 +76,13 @@ class _KkState extends State<Kk> {
       child: Scaffold(
         appBar: AppBar(
           shadowColor: Colors.grey,
-          elevation: 3, // set the elevation to create a shadow effect
+          elevation: 3,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(
-                  20), // set the bottom radius to create a rounded effect
+              bottom: Radius.circular(20),
             ),
           ),
-          title: isDateSubmitted
+          title: !isDateSubmitted
               ? Text(
                   '${_selectedDate.toString().substring(0, 10)}-ны явсан зам',
                   style: const TextStyle(
@@ -121,7 +117,7 @@ class _KkState extends State<Kk> {
               () => locDataController.isLoading.value
                   ? const Center(child: CircularProgressIndicator())
                   : Obx(
-                      () => locDataController.locData.isEmpty
+                      () => locDataController.locList.isEmpty
                           ? const Expanded(
                               child: Center(
                                 child:
@@ -133,7 +129,7 @@ class _KkState extends State<Kk> {
                                 itemCount: 1,
                                 itemBuilder: (context, index) {
                                   return WorkerPathList(
-                                    date: locDataController.locData.first.date!,
+                                    date: locDataController.locList.first.date!,
                                     day: Functions().calculateDay().toString(),
                                     difference: Functions().calculateTime(),
                                     totalDistance:

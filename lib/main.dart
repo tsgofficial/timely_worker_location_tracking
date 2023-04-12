@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_pro/Controller/MapScreenController.dart';
 import 'package:google_maps_pro/Repos/GetLocSocketEmit.dart';
-import 'package:google_maps_pro/Screens/TabbarScreens/MapScreen.dart';
+import 'package:google_maps_pro/Screens/RootScreen/RootScreen.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 
 void main() {
@@ -16,9 +16,6 @@ void main() {
           await InternetConnectionChecker().hasConnection;
     },
   );
-  if (mapScreenController.isDeviceConnected.value) {
-    // GetLocSocketEmit().emitIfDeviceHasConnection();
-  }
   runApp(MyApp());
 }
 
@@ -35,7 +32,7 @@ class MyApp extends StatelessWidget {
             seedColor: Colors.deepPurple, background: Colors.white),
         useMaterial3: true,
       ),
-      home: const MapScreen(),
+      home: const RootScreen(),
     );
   }
 }

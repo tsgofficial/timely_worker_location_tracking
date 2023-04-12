@@ -19,7 +19,7 @@ class LocationDataModel {
 
   int? success;
   String? message;
-  List<LocationData>? data;
+  List<LocationList>? data;
 
   factory LocationDataModel.fromJson(Map<String, dynamic> json) =>
       LocationDataModel(
@@ -27,8 +27,8 @@ class LocationDataModel {
         message: json["message"],
         data: json["data"] == null
             ? []
-            : List<LocationData>.from(
-                json["data"]!.map((x) => LocationData.fromJson(x))),
+            : List<LocationList>.from(
+                json["data"]!.map((x) => LocationList.fromJson(x))),
       );
 
   Map<String, dynamic> toJson() => {
@@ -40,8 +40,8 @@ class LocationDataModel {
       };
 }
 
-class LocationData {
-  LocationData({
+class LocationList {
+  LocationList({
     this.id,
     this.longitude,
     this.latitude,
@@ -59,7 +59,7 @@ class LocationData {
   int? stayTime;
   DateTime? createdAt;
 
-  factory LocationData.fromJson(Map<String, dynamic> json) => LocationData(
+  factory LocationList.fromJson(Map<String, dynamic> json) => LocationList(
         id: json["id"],
         longitude: json["longitude"],
         latitude: json["latitude"],

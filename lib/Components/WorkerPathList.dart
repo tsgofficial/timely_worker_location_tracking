@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../Screens/OtherScreens/DetailedMapScreen.dart';
+import '../Screens/MapScreen.dart';
 import 'CustomColors.dart';
 
 class WorkerPathList extends StatefulWidget {
@@ -28,7 +28,7 @@ class _WorkerPathListState extends State<WorkerPathList> {
     return InkWell(
       onTap: () {
         Get.to(
-          () => DetailedMapScreen(
+          () => MapScreen(
             date: widget.date,
             totalDistance: widget.totalDistance,
             totalTime: widget.difference.toString(),
