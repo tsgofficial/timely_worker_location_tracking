@@ -69,9 +69,12 @@ class GetLocSocketEmit {
         location = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.best,
         );
-      } while (location.accuracy > 10 && location.speed > 25);
+
+        print("location1: $location");
+      } while (location.accuracy > 3 && location.speed > 25);
 
       initialPos = LatLng(location.latitude, location.longitude);
+      print("took the 1st location $initialPos");
       emitFirstLocation();
 
       const Duration duration = Duration(seconds: 5);
@@ -99,9 +102,11 @@ class GetLocSocketEmit {
       location = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.best,
       );
-    } while (location.accuracy > 5 && location.speed > 20);
+      print("location2: $location");
+    } while (location.accuracy > 3 && location.speed > 25);
 
     secondaryPos = LatLng(location.latitude, location.longitude);
+    print("took the 2nd loc: $secondaryPos");
 
     controller.distance.value = Geolocator.distanceBetween(
       initialPos.latitude,
@@ -109,11 +114,10 @@ class GetLocSocketEmit {
       secondaryPos.latitude,
       secondaryPos.longitude,
     );
-    // print('1 $initialPos');
+    print('estimated distance: ${controller.distance.value}');
     // print('2 $secondaryPos');
     if (mapScreenController.isDeviceConnected.value) {
       socketEmit();
-      // emitIfDeviceHasConnection();
     } else {
       saveLocInList();
     }
@@ -151,7 +155,6 @@ class GetLocSocketEmit {
     }
   }
 
-  // can be called when user press on the "Yvlaa" button cuz there will be always internet connection
   void emitIfDeviceHasConnection() {
     if (locList.isNotEmpty) {
       for (int i = 0; i < locList.length - 1; i++) {

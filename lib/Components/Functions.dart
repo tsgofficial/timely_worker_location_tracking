@@ -47,7 +47,7 @@ class Functions {
 
   String calculateDay() {
     DateTime dateTime =
-        DateTime.parse(locListController.locList.last.date.toString());
+        DateTime.parse(locListController.locList.last.createdAt.toString());
 
     String day = DateFormat('EEEE').format(dateTime);
     switch (day) {

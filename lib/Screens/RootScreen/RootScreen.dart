@@ -71,6 +71,7 @@ class _RootScreenState extends State<RootScreen> {
   late Timer _timer;
   double totalDistance = 0;
   Duration totalTime = const Duration(minutes: 0);
+  bool isInitialPositionSet = false;
 
   Future<void> initPositions() async {
     _currentPosition = await Geolocator.getCurrentPosition();
@@ -78,9 +79,36 @@ class _RootScreenState extends State<RootScreen> {
       isInitialPositionSet = true;
     });
   }
-  // Location location = Location();
 
-  bool isInitialPositionSet = false;
+  void estimateInitialTimeAndDistance() {
+    for (int i = 0; i < locDataController.locList.length - 1; i++) {
+      var firstLocLat = double.parse(locDataController.locList[i].latitude!);
+      var firstLocLong = double.parse(locDataController.locList[i].longitude!);
+      var secondLocLat =
+          double.parse(locDataController.locList[i + 1].latitude!);
+      var secondLocLong =
+          double.parse(locDataController.locList[i + 1].longitude!);
+
+      var distance = Geolocator.distanceBetween(
+          firstLocLat, firstLocLong, secondLocLat, secondLocLong);
+      totalDistance += distance / 1000;
+      // print("estimated totalDistance: $totalDistance");
+      setState(() {});
+    }
+    String timestamp1 = locDataController.locList.last.createdAt.toString();
+    String timestamp2 = locDataController.locList.first.createdAt.toString();
+
+    DateTime dateTime1 = DateTime.parse(timestamp1);
+    DateTime dateTime2 = DateTime.parse(timestamp2);
+
+    Duration difference = dateTime1.difference(dateTime2);
+
+    print("time difference: $difference");
+
+    _elapsedTime += difference;
+    print("estimated _elapsed time: $_elapsedTime");
+    setState(() {});
+  }
 
   Future<void> getPositionStream() async {
     _positionStream = Geolocator.getPositionStream(
@@ -89,35 +117,40 @@ class _RootScreenState extends State<RootScreen> {
         distanceFilter: 5,
       ),
     ).listen((Position newPosition) {
-      print(
-          'new position lat: ${newPosition.latitude}, new position long: ${newPosition.longitude}');
-      setState(() {
-        _previousPosition = _currentPosition;
-        _currentPosition = newPosition;
-        _points
-            .add(LatLng(_currentPosition.latitude, _currentPosition.longitude));
-        _polylinesStream.add(Polyline(
-          polylineId: const PolylineId('userLocation'),
-          visible: true,
-          points: _points.toList(),
-          color: Colors.blue,
-          width: 5,
-        ));
-        endMarker = Marker(
-          markerId: const MarkerId('start_marker'),
-          position:
-              LatLng(_currentPosition.latitude, _currentPosition.longitude),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+      if (newPosition.accuracy < 5 && newPosition.speed < 25) {
+        print(
+            'new position lat: ${newPosition.latitude}, new position long: ${newPosition.longitude}');
+        setState(() {
+          _previousPosition = _currentPosition;
+          _currentPosition = newPosition;
+          _points.add(
+              LatLng(_currentPosition.latitude, _currentPosition.longitude));
+          _polylinesStream.add(Polyline(
+            polylineId: const PolylineId('userLocation'),
+            visible: true,
+            points: _points.toList(),
+            color: Colors.blue,
+            width: 5,
+          ));
+          endMarker = Marker(
+            markerId: const MarkerId('start_marker'),
+            position:
+                LatLng(_currentPosition.latitude, _currentPosition.longitude),
+            icon:
+                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          );
+        });
+        double distance = Geolocator.distanceBetween(
+          _previousPosition.latitude,
+          _previousPosition.longitude,
+          _currentPosition.latitude,
+          _currentPosition.longitude,
         );
-      });
-      double distance = Geolocator.distanceBetween(
-        _previousPosition.latitude,
-        _previousPosition.longitude,
-        _currentPosition.latitude,
-        _currentPosition.longitude,
-      );
-      totalDistance += distance;
-      print("live position length: ${_points.length}");
+        totalDistance += distance / 1000;
+        print("live position length: ${_points.length}");
+      } else {
+        print("skipped a low position!");
+      }
     });
   }
 
@@ -219,17 +252,18 @@ class _RootScreenState extends State<RootScreen> {
     }
   }
 
+  bool isUserPressedYvlaa = false;
+
   @override
   void initState() {
     super.initState();
     getConnectivity();
     Functions().reqPermission();
-    _startTime = DateTime.now();
+    // if (!isUserPressedYvlaa) {
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
-      setState(() {
-        _elapsedTime = DateTime.now().difference(_startTime);
-      });
+      _elapsedTime = _elapsedTime + const Duration(seconds: 1);
     });
+    // }
     locDataController
         .getLocData(
       70872,
@@ -240,6 +274,19 @@ class _RootScreenState extends State<RootScreen> {
     )
         .whenComplete(() {
       setMarkers();
+      getLocsFromAPI();
+      estimateInitialTimeAndDistance();
+      if (!isUserPressedYvlaa) {
+        setState(() {
+          _elapsedTime += DateTime.parse(DateFormat("yyyy-MM-dd hh:mm:ss")
+                  .format(locDataController.locList.last.createdAt!))
+              .difference(DateTime.now());
+        });
+        print("set the State of the elapsed time !!!");
+        print(
+            "ncie ${DateFormat("yyyy-MM-dd hh:mm:ss ").format(locDataController.locList.last.createdAt!)}");
+        print("value: $_elapsedTime");
+      }
     });
     initPositions().whenComplete(() {
       getPositionStream();
@@ -325,130 +372,142 @@ class _RootScreenState extends State<RootScreen> {
                     style: TextStyle(color: CustomColors.MAIN_BLUE)))
           ],
         ),
-        body: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10.0,
-                vertical: 5,
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: CustomColors.MAIN_BLUE,
-                  borderRadius: BorderRadius.circular(10),
+        body: RefreshIndicator(
+          onRefresh: () async {
+            await locDataController.getLocData(
+              70872,
+              '1',
+              70872,
+              DateFormat('yyyy-MM-dd')
+                  .parse(DateTime.now().toString().substring(0, 10)),
+            );
+          },
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10.0,
+                  vertical: 5,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          const Text(
-                            'Нийт явж буй зам: ',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: CustomColors.MAIN_BLUE,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Нийт явж буй зам: ',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          Text(
-                            totalDistance.toString().length > 3
-                                ? '${totalDistance.toString().substring(0, 4)} m'
-                                : totalDistance.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                            Text(
+                              totalDistance.toString().length < 3
+                                  ? "${totalDistance.toString()} km"
+                                  : totalDistance.toString().length == 3
+                                      ? '${totalDistance.toString().substring(0, 3)} km'
+                                      : '${totalDistance.toString().substring(0, 4)} km',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          const Text(
-                            'Нийт явж буй хугацаа: ',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            const Text(
+                              'Нийт явж буй хугацаа: ',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          Text(
-                            '${_elapsedTime.inHours} h ${_elapsedTime.inMinutes} m',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                            Text(
+                              _elapsedTime.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            isInitialPositionSet == false
-                ? const Center(child: CircularProgressIndicator())
-                : isSetMarkers == false
-                    ? const Center(child: CircularProgressIndicator())
-                    : Expanded(
-                        child: SizedBox(
-                          // height: MediaQuery.of(context).size.height * 0.7,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 5.0,
-                              vertical: 5,
-                            ),
-                            child: Stack(
-                              children: [
-                                GoogleMap(
-                                  myLocationButtonEnabled: true,
-                                  myLocationEnabled: true,
-                                  markers: <Marker>{
-                                    startMarker,
-                                    endMarker,
-                                  },
-                                  onMapCreated:
-                                      (GoogleMapController controller) {
-                                    _controller.complete(controller);
-                                    // initFunctions();
-                                    getPositionStream();
-                                    getLocsFromAPI();
-                                  },
-                                  polylines: _polylinesStream,
-                                  initialCameraPosition: _initialCameraPosition,
-                                  mapType: MapType.normal,
-                                ),
-                                Positioned(
-                                  top: 10,
-                                  left: 10,
-                                  child: IconButton(
-                                    onPressed: () {
-                                      Get.to(
-                                        () => MapScreen(
-                                          date: DateTime.now(),
-                                          totalDistance:
-                                              Functions().calculateDistance(),
-                                          totalTime: Functions()
-                                              .calculateTime()
-                                              .toString(),
-                                        ),
-                                      );
+              isInitialPositionSet == false
+                  ? const Center(child: CircularProgressIndicator())
+                  : isSetMarkers == false
+                      ? const Center(child: CircularProgressIndicator())
+                      : Expanded(
+                          child: SizedBox(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5.0,
+                                vertical: 5,
+                              ),
+                              child: Stack(
+                                children: [
+                                  GoogleMap(
+                                    myLocationButtonEnabled: true,
+                                    myLocationEnabled: true,
+                                    markers: <Marker>{
+                                      startMarker,
+                                      endMarker,
                                     },
-                                    icon: const Icon(
-                                      size: 35,
-                                      Icons.zoom_in_map_outlined,
-                                      color: Color(0xffF04262),
+                                    onMapCreated:
+                                        (GoogleMapController controller) {
+                                      _controller.complete(controller);
+                                      // initFunctions();
+                                      getPositionStream();
+                                    },
+                                    polylines: _polylinesStream,
+                                    initialCameraPosition:
+                                        _initialCameraPosition,
+                                    mapType: MapType.normal,
+                                  ),
+                                  Positioned(
+                                    top: 10,
+                                    left: 10,
+                                    child: IconButton(
+                                      onPressed: () {
+                                        Get.to(
+                                          () => MapScreen(
+                                            date: DateTime.now(),
+                                            totalDistance:
+                                                Functions().calculateDistance(),
+                                            totalTime: Functions()
+                                                .calculateTime()
+                                                .toString(),
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(
+                                        size: 35,
+                                        Icons.zoom_in_map_outlined,
+                                        color: Color(0xffF04262),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-          ],
+            ],
+          ),
         ),
       ),
     );

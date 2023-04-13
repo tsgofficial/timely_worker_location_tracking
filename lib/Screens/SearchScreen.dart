@@ -25,7 +25,7 @@ class _SearchScreenState extends State<SearchScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-      locDataController.getLocData(64706, '1', 1, widget.date);
+      locDataController.getLocData(70872, '1', 70872, widget.date);
     });
   }
 
@@ -82,7 +82,7 @@ class _SearchScreenState extends State<SearchScreen> {
               bottom: Radius.circular(20),
             ),
           ),
-          title: !isDateSubmitted
+          title: isDateSubmitted
               ? Text(
                   '${_selectedDate.toString().substring(0, 10)}-ны явсан зам',
                   style: const TextStyle(
@@ -129,7 +129,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                 itemCount: 1,
                                 itemBuilder: (context, index) {
                                   return WorkerPathList(
-                                    date: locDataController.locList.first.date!,
+                                    date: widget.date,
                                     day: Functions().calculateDay().toString(),
                                     difference: Functions().calculateTime(),
                                     totalDistance:
