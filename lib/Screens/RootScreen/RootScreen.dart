@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'dart:io' show Platform;
@@ -11,6 +12,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_maps_pro/Controller/LocationDataController.dart';
 import 'package:google_maps_pro/Controller/MapScreenController.dart';
 import 'package:google_maps_pro/Screens/SearchScreen.dart';
+import 'package:google_maps_pro/random.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:intl/intl.dart';
 
@@ -26,21 +28,129 @@ class RootScreen extends StatefulWidget {
   State<RootScreen> createState() => _RootScreenState();
 }
 
-class _RootScreenState extends State<RootScreen> {
+class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkDeviceLock();
+    getConnectivity();
+    Functions().reqPermission();
+    locDataController
+        .getLocData(
+      70872,
+      '1',
+      70872,
+      DateFormat('yyyy-MM-dd')
+          .parse(DateTime.now().toString().substring(0, 10)),
+    )
+        .whenComplete(() {
+      if (locDataController.locList.isNotEmpty) {
+        setMarkers();
+        getLocsFromAPI();
+        estimateInitialTimeAndDistance();
+      }
+      if (isUserPressedYvlaa == false) {
+        setState(() {
+          _elapsedTime += DateTime.now().difference(DateTime.parse(
+              DateFormat("yyyy-MM-dd hh:mm:ss.ssss")
+                  .format(locDataController.locList.last.createdAt!)));
+        });
+      }
+    });
+    initPositions().whenComplete(() {
+      getPositionStream();
+    });
+    _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
+      setState(() {
+        _elapsedTime = _elapsedTime + const Duration(seconds: 1);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    subscription.cancel();
+    _positionStream.cancel();
+    _timer.cancel();
+    super.dispose();
+  }
+
+  bool _isInBackground = false;
+  bool _isDeviceLocked = false;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused) {
+      // App is in the background
+      _isInBackground = true;
+      print("app changed to background");
+    } else if (state == AppLifecycleState.resumed) {
+      // App is in the foreground
+      _isInBackground = false;
+      print("app returned to foreground");
+    }
+  }
+
+  Future<void> _checkDeviceLock() async {
+    _isDeviceLocked =
+        (await const MethodChannel('plugins.flutter.io/device_info')
+            .invokeMethod<bool>('isDeviceLocked'))!;
+    print("app is locked ");
+    setState(() {});
+  }
+
   final mapScreenController = Get.put(MapScreenController());
+  final locDataController = Get.put(LocationDataController());
+  DateTime _selectedDate = DateTime.now();
   late StreamSubscription subscription;
   final Completer<GoogleMapController> _controller = Completer();
   late final Marker startMarker;
   late Marker endMarker;
-  late final CameraPosition _initialCameraPosition = CameraPosition(
-    target: LatLng(_currentPosition.latitude, _currentPosition.longitude),
+  late StreamSubscription<Position> _positionStream;
+  late Position _currentPosition;
+  late Position _previousPosition;
+  final Set<LatLng> _points = {};
+  final Set<Marker> _markers = {};
+  final Set<Polyline> _polylinesStream = <Polyline>{};
+  late Duration _elapsedTime = Duration.zero;
+  late Timer _timer;
+  double totalDistance = 0;
+  bool isInitialPositionSet = false;
+  bool isSetMarkers = false;
+  bool isUserPressedYvlaa = false;
+  CameraPosition _initialCameraPosition = const CameraPosition(
+    target: LatLng(47.921556, 106.917126),
     zoom: 16,
   );
 
-  bool isSetMarkers = false;
+  Future<void> initPositions() async {
+    _currentPosition = await Geolocator.getCurrentPosition();
+    setState(() {
+      isInitialPositionSet = true;
+      _initialCameraPosition = CameraPosition(
+        target: LatLng(_currentPosition.latitude, _currentPosition.longitude),
+        zoom: 16,
+      );
+    });
+  }
 
   void setMarkers() {
-    setState(() {
+    if (locDataController.locList.length == 1) {
+      startMarker = Marker(
+        markerId: const MarkerId('start_marker'),
+        position: LatLng(
+          double.parse(locDataController.locList.first.latitude!),
+          double.parse(locDataController.locList.first.longitude!),
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+      );
+      _markers.add(startMarker);
+      isSetMarkers = true;
+      setState(() {});
+    } else {
       startMarker = Marker(
         markerId: const MarkerId('start_marker'),
         position: LatLng(
@@ -50,113 +160,21 @@ class _RootScreenState extends State<RootScreen> {
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
       );
       endMarker = Marker(
-        markerId: const MarkerId('start_marker'),
+        markerId: const MarkerId('end_marker'),
         position: LatLng(
           double.parse(locDataController.locList.last.latitude!),
           double.parse(locDataController.locList.last.longitude!),
         ),
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
       );
+      _markers.add(startMarker);
+      _markers.add(endMarker);
       isSetMarkers = true;
-    });
-  }
-
-  late StreamSubscription<Position> _positionStream;
-  late Position _currentPosition;
-  late Position _previousPosition;
-  final Set<LatLng> _points = {};
-  final Set<Polyline> _polylinesStream = <Polyline>{};
-  late DateTime _startTime;
-  late Duration _elapsedTime = Duration.zero;
-  late Timer _timer;
-  double totalDistance = 0;
-  Duration totalTime = const Duration(minutes: 0);
-  bool isInitialPositionSet = false;
-
-  Future<void> initPositions() async {
-    _currentPosition = await Geolocator.getCurrentPosition();
-    setState(() {
-      isInitialPositionSet = true;
-    });
-  }
-
-  void estimateInitialTimeAndDistance() {
-    for (int i = 0; i < locDataController.locList.length - 1; i++) {
-      var firstLocLat = double.parse(locDataController.locList[i].latitude!);
-      var firstLocLong = double.parse(locDataController.locList[i].longitude!);
-      var secondLocLat =
-          double.parse(locDataController.locList[i + 1].latitude!);
-      var secondLocLong =
-          double.parse(locDataController.locList[i + 1].longitude!);
-
-      var distance = Geolocator.distanceBetween(
-          firstLocLat, firstLocLong, secondLocLat, secondLocLong);
-      totalDistance += distance / 1000;
-      // print("estimated totalDistance: $totalDistance");
       setState(() {});
     }
-    String timestamp1 = locDataController.locList.last.createdAt.toString();
-    String timestamp2 = locDataController.locList.first.createdAt.toString();
-
-    DateTime dateTime1 = DateTime.parse(timestamp1);
-    DateTime dateTime2 = DateTime.parse(timestamp2);
-
-    Duration difference = dateTime1.difference(dateTime2);
-
-    print("time difference: $difference");
-
-    _elapsedTime += difference;
-    print("estimated _elapsed time: $_elapsedTime");
-    setState(() {});
   }
 
-  Future<void> getPositionStream() async {
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.best,
-        distanceFilter: 5,
-      ),
-    ).listen((Position newPosition) {
-      if (newPosition.accuracy < 5 && newPosition.speed < 25) {
-        print(
-            'new position lat: ${newPosition.latitude}, new position long: ${newPosition.longitude}');
-        setState(() {
-          _previousPosition = _currentPosition;
-          _currentPosition = newPosition;
-          _points.add(
-              LatLng(_currentPosition.latitude, _currentPosition.longitude));
-          _polylinesStream.add(Polyline(
-            polylineId: const PolylineId('userLocation'),
-            visible: true,
-            points: _points.toList(),
-            color: Colors.blue,
-            width: 5,
-          ));
-          endMarker = Marker(
-            markerId: const MarkerId('start_marker'),
-            position:
-                LatLng(_currentPosition.latitude, _currentPosition.longitude),
-            icon:
-                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          );
-        });
-        double distance = Geolocator.distanceBetween(
-          _previousPosition.latitude,
-          _previousPosition.longitude,
-          _currentPosition.latitude,
-          _currentPosition.longitude,
-        );
-        totalDistance += distance / 1000;
-        print("live position length: ${_points.length}");
-      } else {
-        print("skipped a low position!");
-      }
-    });
-  }
-
-  // List<LatLng> polylineCoordinates = [];
-
-  void getLocsFromAPI() async {
+  void getLocsFromAPI() {
     for (int i = 0; i < locDataController.locList.length; i++) {
       _points.add(
         LatLng(
@@ -167,8 +185,6 @@ class _RootScreenState extends State<RootScreen> {
     }
     setPolylines();
   }
-
-  // final Set<Polyline> _polylines = <Polyline>{};
 
   void setPolylines() {
     setState(() {
@@ -182,6 +198,36 @@ class _RootScreenState extends State<RootScreen> {
       );
     });
     print('stream position lenght: ${_points.length}');
+  }
+
+  void estimateInitialTimeAndDistance() {
+    if (locDataController.locList.length > 1) {
+      for (int i = 0; i < locDataController.locList.length - 1; i++) {
+        var firstLocLat = double.parse(locDataController.locList[i].latitude!);
+        var firstLocLong =
+            double.parse(locDataController.locList[i].longitude!);
+        var secondLocLat =
+            double.parse(locDataController.locList[i + 1].latitude!);
+        var secondLocLong =
+            double.parse(locDataController.locList[i + 1].longitude!);
+
+        var distance = Geolocator.distanceBetween(
+            firstLocLat, firstLocLong, secondLocLat, secondLocLong);
+        totalDistance += distance / 1000;
+        // print("estimated totalDistance: $totalDistance");
+        setState(() {});
+      }
+      String timestamp1 = locDataController.locList.last.createdAt.toString();
+      String timestamp2 = locDataController.locList.first.createdAt.toString();
+
+      DateTime dateTime1 = DateTime.parse(timestamp1);
+      DateTime dateTime2 = DateTime.parse(timestamp2);
+
+      Duration difference = dateTime1.difference(dateTime2);
+
+      _elapsedTime += difference;
+      setState(() {});
+    }
   }
 
   getConnectivity() {
@@ -198,150 +244,57 @@ class _RootScreenState extends State<RootScreen> {
     );
   }
 
-  showDialogBox() {
-    if (Platform.isIOS) {
-      showCupertinoDialog(
-        context: context,
-        builder: (BuildContext context) => CupertinoAlertDialog(
-          title: const Text("No Connection"),
-          content: const Text('Please check your internet connectivity'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(context, 'Cancel');
-                setState(() {
-                  mapScreenController.isAlertSet.value = false;
-                });
-                mapScreenController.isDeviceConnected.value =
-                    await InternetConnectionChecker().hasConnection;
-                if (!mapScreenController.isDeviceConnected.value) {
-                  showDialogBox();
-                  mapScreenController.isAlertSet.value = true;
-                }
-              },
-              child: const Text('Ok'),
+  void getPositionStream() async {
+    _positionStream = Geolocator.getPositionStream(
+      locationSettings: Platform.isAndroid
+          ? AndroidSettings(
+              forceLocationManager: true,
+              accuracy: LocationAccuracy.best,
+              distanceFilter: 5,
+            )
+          : const LocationSettings(
+              accuracy: LocationAccuracy.best,
+              distanceFilter: 5,
             ),
-          ],
-        ),
-      );
-    } else {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text("No Connection"),
-            content: const Text('Please check your internet connectivity'),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () async {
-                  Navigator.pop(context, 'Cancel');
-                  mapScreenController.isAlertSet.value = false;
-                  mapScreenController.isDeviceConnected.value =
-                      await InternetConnectionChecker().hasConnection;
-                  if (!mapScreenController.isDeviceConnected.value) {
-                    showDialogBox();
-                    mapScreenController.isAlertSet.value = true;
-                  }
-                },
-                child: const Text('Ok'),
-              ),
-            ],
-          );
-        },
-      );
-    }
-  }
-
-  bool isUserPressedYvlaa = false;
-
-  @override
-  void initState() {
-    super.initState();
-    getConnectivity();
-    Functions().reqPermission();
-    // if (!isUserPressedYvlaa) {
-    _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
-      _elapsedTime = _elapsedTime + const Duration(seconds: 1);
-    });
-    // }
-    locDataController
-        .getLocData(
-      70872,
-      '1',
-      70872,
-      DateFormat('yyyy-MM-dd')
-          .parse(DateTime.now().toString().substring(0, 10)),
-    )
-        .whenComplete(() {
-      setMarkers();
-      getLocsFromAPI();
-      estimateInitialTimeAndDistance();
-      if (!isUserPressedYvlaa) {
+    ).listen((Position newPosition) {
+      print("receiving location stream $newPosition");
+      if (newPosition.accuracy < 5 && newPosition.speed < 25) {
         setState(() {
-          _elapsedTime += DateTime.parse(DateFormat("yyyy-MM-dd hh:mm:ss")
-                  .format(locDataController.locList.last.createdAt!))
-              .difference(DateTime.now());
+          _previousPosition = _currentPosition;
+          _currentPosition = newPosition;
+          var s = KalmanFilter.filter(
+            [_previousPosition.latitude, _previousPosition.longitude],
+            [_currentPosition.latitude, _currentPosition.longitude],
+          );
+          _points.add(
+              LatLng(_currentPosition.latitude, _currentPosition.longitude));
+          _polylinesStream.add(Polyline(
+            polylineId: const PolylineId('userLocation'),
+            visible: true,
+            points: _points.toList(),
+            color: Colors.blue,
+            width: 5,
+          ));
+          endMarker = Marker(
+            markerId: const MarkerId('end_marker'),
+            position:
+                LatLng(_currentPosition.latitude, _currentPosition.longitude),
+            icon:
+                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          );
         });
-        print("set the State of the elapsed time !!!");
-        print(
-            "ncie ${DateFormat("yyyy-MM-dd hh:mm:ss ").format(locDataController.locList.last.createdAt!)}");
-        print("value: $_elapsedTime");
+        double distance = Geolocator.distanceBetween(
+          _previousPosition.latitude,
+          _previousPosition.longitude,
+          _currentPosition.latitude,
+          _currentPosition.longitude,
+        );
+        totalDistance += distance / 1000;
+        print("got high accuracy position");
+      } else {
+        print("skipped a low position!");
       }
     });
-    initPositions().whenComplete(() {
-      getPositionStream();
-    });
-  }
-
-  @override
-  void dispose() {
-    subscription.cancel();
-    _positionStream.cancel();
-    _timer.cancel();
-    super.dispose();
-  }
-
-  DateTime _selectedDate = DateTime.now();
-
-  final locDataController = Get.put(LocationDataController());
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-        context: context,
-        initialDate: DateTime.now(),
-        firstDate: DateTime(2015),
-        lastDate: DateTime(2101),
-        builder: (context, child) {
-          return Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.light(
-                primary: CustomColors.MAIN_BLUE, // <-- SEE HERE
-                onPrimary: Colors.white,
-                onSurface: CustomColors.MAIN_BLUE, // <-- SEE HERE
-              ),
-              textButtonTheme: TextButtonThemeData(
-                style: TextButton.styleFrom(
-                  foregroundColor: CustomColors.MAIN_BLUE, // button text color
-                ),
-              ),
-            ),
-            child: child!,
-          );
-        });
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-      Future.delayed(const Duration(milliseconds: 100), () {
-        Get.to(
-          () => SearchScreen(
-            date: DateFormat('yyyy-MM-dd').parse(
-              _selectedDate.toString().substring(0, 10),
-            ),
-          ),
-        );
-      });
-    }
   }
 
   @override
@@ -433,7 +386,7 @@ class _RootScreenState extends State<RootScreen> {
                               ),
                             ),
                             Text(
-                              _elapsedTime.toString(),
+                              _elapsedTime.toString().substring(0, 10),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -447,69 +400,150 @@ class _RootScreenState extends State<RootScreen> {
                   ),
                 ),
               ),
-              isInitialPositionSet == false
-                  ? const Center(child: CircularProgressIndicator())
-                  : isSetMarkers == false
-                      ? const Center(child: CircularProgressIndicator())
-                      : Expanded(
-                          child: SizedBox(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 5.0,
-                                vertical: 5,
-                              ),
-                              child: Stack(
-                                children: [
-                                  GoogleMap(
-                                    myLocationButtonEnabled: true,
-                                    myLocationEnabled: true,
-                                    markers: <Marker>{
-                                      startMarker,
-                                      endMarker,
-                                    },
-                                    onMapCreated:
-                                        (GoogleMapController controller) {
-                                      _controller.complete(controller);
-                                      // initFunctions();
-                                      getPositionStream();
-                                    },
-                                    polylines: _polylinesStream,
-                                    initialCameraPosition:
-                                        _initialCameraPosition,
-                                    mapType: MapType.normal,
-                                  ),
-                                  Positioned(
-                                    top: 10,
-                                    left: 10,
-                                    child: IconButton(
-                                      onPressed: () {
-                                        Get.to(
-                                          () => MapScreen(
-                                            date: DateTime.now(),
-                                            totalDistance:
-                                                Functions().calculateDistance(),
-                                            totalTime: Functions()
-                                                .calculateTime()
-                                                .toString(),
-                                          ),
-                                        );
-                                      },
-                                      icon: const Icon(
-                                        size: 35,
-                                        Icons.zoom_in_map_outlined,
-                                        color: Color(0xffF04262),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+              Expanded(
+                child: SizedBox(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5.0,
+                      vertical: 5,
+                    ),
+                    child: Stack(
+                      children: [
+                        GoogleMap(
+                            myLocationButtonEnabled: true,
+                            myLocationEnabled: true,
+                            markers: _markers,
+                            onMapCreated: (GoogleMapController controller) {
+                              _controller.complete(controller);
+                              getPositionStream();
+                            },
+                            polylines: _polylinesStream,
+                            initialCameraPosition: _initialCameraPosition,
+                            mapType: MapType.normal),
+                        Positioned(
+                          top: 10,
+                          left: 10,
+                          child: IconButton(
+                            onPressed: () {
+                              Get.to(
+                                () => MapScreen(
+                                  date: DateTime.now(),
+                                  totalDistance:
+                                      Functions().calculateDistance(),
+                                  totalTime:
+                                      Functions().calculateTime().toString(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(
+                              size: 35,
+                              Icons.zoom_in_map_outlined,
+                              color: Color(0xffF04262),
                             ),
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime(2015),
+        lastDate: DateTime(2101),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.light(
+                primary: CustomColors.MAIN_BLUE, // <-- SEE HERE
+                onPrimary: Colors.white,
+                onSurface: CustomColors.MAIN_BLUE, // <-- SEE HERE
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(
+                  foregroundColor: CustomColors.MAIN_BLUE, // button text color
+                ),
+              ),
+            ),
+            child: child!,
+          );
+        });
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+      Future.delayed(const Duration(milliseconds: 100), () {
+        Get.to(
+          () => SearchScreen(
+            date: DateFormat('yyyy-MM-dd').parse(
+              _selectedDate.toString().substring(0, 10),
+            ),
+          ),
+        );
+      });
+    }
+  }
+
+  showDialogBox() {
+    if (Platform.isIOS) {
+      showCupertinoDialog(
+        context: context,
+        builder: (BuildContext context) => CupertinoAlertDialog(
+          title: const Text("No Connection"),
+          content: const Text('Please check your internet connectivity'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context, 'Cancel');
+                setState(() {
+                  mapScreenController.isAlertSet.value = false;
+                });
+                mapScreenController.isDeviceConnected.value =
+                    await InternetConnectionChecker().hasConnection;
+                if (!mapScreenController.isDeviceConnected.value) {
+                  showDialogBox();
+                  mapScreenController.isAlertSet.value = true;
+                }
+              },
+              child: const Text('Ok'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text("No Connection"),
+            content: const Text('Please check your internet connectivity'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context, 'Cancel');
+                  mapScreenController.isAlertSet.value = false;
+                  mapScreenController.isDeviceConnected.value =
+                      await InternetConnectionChecker().hasConnection;
+                  if (!mapScreenController.isDeviceConnected.value) {
+                    showDialogBox();
+                    mapScreenController.isAlertSet.value = true;
+                  }
+                },
+                child: const Text('Ok'),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 }

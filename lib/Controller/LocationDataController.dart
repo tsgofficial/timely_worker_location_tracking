@@ -14,14 +14,12 @@ class LocationDataController extends GetxController {
     isLoading.value = true;
     LocationDataModel locationDataModel =
         await ApiService().getLocData(id, token, userId, date);
-    print("tsaanaas irsen data length ni: ${locationDataModel.data!.length}");
     message.value = locationDataModel.message!;
     locDataModel.value = locationDataModel;
     locList.value = locationDataModel.data!;
     isLoading.value = false;
     if (locList.isNotEmpty) {
-      print('kkkkkkkkkkkkkkkk ${locList.length}');
-      print('lllllllllllllll ${locList.last.latitude}');
+      print('loc list length printed in controller ${locList.length}');
     } else {
       print("location list ni hooson bshd");
     }

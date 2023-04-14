@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_maps_pro/Controller/MapScreenController.dart';
+import 'package:logger/logger.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 import '../Controller/SocketController.dart';
@@ -20,6 +21,12 @@ class GetLocSocketEmit {
   Duration duration = const Duration(seconds: 1);
   late Timer timer;
   final mapScreenController = Get.put(MapScreenController());
+  var logger = Logger(
+      // filter: null,
+      // printer: LogfmtPrinter(),
+      // level: Logger.level,
+      // output: ConsoleOutput(),
+      );
 
   void startTimer() {
     timer = Timer.periodic(duration, (timer) {
@@ -34,6 +41,15 @@ class GetLocSocketEmit {
   }
 
   // should be called when user pressed on the "Irlee" button
+
+  // Future<void> requestForegroundServicePermission() async {
+  //   final PermissionStatus permissionStatus =
+  //       await Permission.
+
+  //   if (permissionStatus == PermissionStatus.denied) {
+  //     // Handle the denied permission
+  //   }
+  // }
 
   Future<void> checkPermission() async {
     bool serviceEnabled;
@@ -65,13 +81,11 @@ class GetLocSocketEmit {
       emitIfDeviceHasConnection();
       startTimer();
       late Position location;
-      do {
-        location = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.best,
-        );
 
-        print("location1: $location");
-      } while (location.accuracy > 3 && location.speed > 25);
+      location = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+        forceAndroidLocationManager: true,
+      );
 
       initialPos = LatLng(location.latitude, location.longitude);
       print("took the 1st location $initialPos");
@@ -101,9 +115,10 @@ class GetLocSocketEmit {
     do {
       location = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.best,
+        forceAndroidLocationManager: true,
       );
-      print("location2: $location");
-    } while (location.accuracy > 3 && location.speed > 25);
+      // print("location2: $location");
+    } while (location.accuracy > 5 && location.speed > 25);
 
     secondaryPos = LatLng(location.latitude, location.longitude);
     print("took the 2nd loc: $secondaryPos");
@@ -124,7 +139,7 @@ class GetLocSocketEmit {
   }
 
   void socketEmit() {
-    if (controller.distance.value > 1) {
+    if (controller.distance.value > 25 && controller.time.value > 10) {
       var locationData = {
         'latitude': secondaryPos.latitude,
         'longitude': secondaryPos.longitude,
@@ -141,7 +156,7 @@ class GetLocSocketEmit {
   }
 
   void saveLocInList() {
-    if (controller.distance.value > 10) {
+    if (controller.distance.value > 25) {
       locList.add({
         'latitude': secondaryPos.latitude,
         'longitude': secondaryPos.longitude,
@@ -164,4 +179,31 @@ class GetLocSocketEmit {
       locList.clear();
     }
   }
+
+  // Future<void> getPositionStream() async {
+  //   //   Geolocator.getPositionStream(
+  //   //     locationSettings: Platform.isAndroid
+  //   //         ? AndroidSettings(
+  //   //             forceLocationManager: true,
+  //   //             accuracy: LocationAccuracy.best,
+  //   //             distanceFilter: 5,
+  //   //           )
+  //   //         : const LocationSettings(
+  //   //             accuracy: LocationAccuracy.best,
+  //   //             distanceFilter: 5,
+  //   //           ),
+  //   //   ).listen((Position position) {
+  //   //     print("new position $position");
+  //   //   });
+  //   // }
+  //   Timer.periodic(
+  //     const Duration(milliseconds: 1000),
+  //     (timer) async {
+  //       Position newPosition = await Geolocator.getCurrentPosition();
+  //       // print('new position $newPosition');
+  //       // print('got new position');
+  //       logger.d("new position $newPosition");
+  //     },
+  //   );
+  // }
 }

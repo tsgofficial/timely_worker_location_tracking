@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -25,33 +24,21 @@ class MapScreen extends StatefulWidget {
 }
 
 class MapScreenState extends State<MapScreen> {
-  final controller = Get.put(LocationDataController());
-  final googleMapsController = Get.put(GoogleMapsController());
   @override
   void initState() {
     super.initState();
-    // polylinePoints = PolylinePoints();
-    reqPermission();
     getLocs();
   }
 
+  final controller = Get.put(LocationDataController());
+  final googleMapsController = Get.put(GoogleMapsController());
+  late LatLng currentLocation;
+  late LatLng destinationLocation;
+  final Set<Polyline> _polylines = <Polyline>{};
+  final Completer<GoogleMapController> _controller =
+      Completer<GoogleMapController>();
   List<LatLng> polylineCoordinates = [];
   bool isLoading = false;
-
-  void getLocs() {
-    googleMapsController.isLoading.value = true;
-    for (int i = 0; i < controller.locList.length - 1; i++) {
-      polylineCoordinates.add(
-        LatLng(
-          double.parse(controller.locList[i].latitude!),
-          double.parse(controller.locList[i].longitude!),
-        ),
-      );
-    }
-    setPolylines();
-    googleMapsController.isLoading.value = false;
-  }
-
   late final CameraPosition _initialCameraPosition = CameraPosition(
     target: LatLng(
       double.parse(controller.locList.first.latitude!),
@@ -78,46 +65,18 @@ class MapScreenState extends State<MapScreen> {
     icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
   );
 
-  late LatLng currentLocation;
-  late LatLng destinationLocation;
-
-  final Set<Polyline> _polylines = <Polyline>{};
-  // late PolylinePoints polylinePoints;
-
-  final Completer<GoogleMapController> _controller =
-      Completer<GoogleMapController>();
-
-  Future<void> reqPermission() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    // Test if location services are enabled.
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      // Location services are not enabled don't continue
-      // accessing the position and request users of the
-      // App to enable the location services.
-      return Future.error('Location services are disabled.');
+  void getLocs() {
+    googleMapsController.isLoading.value = true;
+    for (int i = 0; i < controller.locList.length - 1; i++) {
+      polylineCoordinates.add(
+        LatLng(
+          double.parse(controller.locList[i].latitude!),
+          double.parse(controller.locList[i].longitude!),
+        ),
+      );
     }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        // Permissions are denied, next time you could try
-        // requesting permissions again (this is also wheres
-        // Android's shouldShowRequestPermissionRationale
-        // returned true. According to Android guidelines
-        // your App should show an explanatory UI now.
-        return Future.error('Location permissions are denied');
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      // Permissions are denied forever, handle appropriately.
-      return Future.error(
-          'Location permissions are permanently denied, we cannot request permissions.');
-    }
+    setPolylines();
+    googleMapsController.isLoading.value = false;
   }
 
   void setPolylines() {
