@@ -25,14 +25,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.5"
-  background_locator_2:
-    dependency: "direct main"
-    description:
-      name: background_locator_2
-      sha256: "145ef41767306052cbb2159478c0369b83c9800740f7acc656530c263d371695"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.6"
   boolean_selector:
     dependency: transitive
     description:
@@ -41,6 +33,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.1"
+  chalkdart:
+    dependency: "direct main"
+    description:
+      name: chalkdart
+      sha256: "5fceaf0eb65cb3a0746423aad4b285b9ec123133b9435630ac027f305b21e8b5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.9"
   characters:
     dependency: transitive
     description:
@@ -89,14 +89,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.5"
-  custom_timer:
-    dependency: "direct main"
-    description:
-      name: custom_timer
-      sha256: "65af2d6a3f6f232b224ad1dd06dbab9f8473be69800a32934cbd1e6d90276348"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.3"
   dbus:
     dependency: transitive
     description:

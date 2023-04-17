@@ -54,6 +54,11 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+
+        //  manifestPlaceholders = [
+        //     'location_permission': "android.permission.ACCESS_FINE_LOCATION",
+        //     'location_background_permission': "android.permission.ACCESS_BACKGROUND_LOCATION"
+        // ]
     }
 
     buildTypes {

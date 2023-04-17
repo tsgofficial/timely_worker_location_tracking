@@ -10,9 +10,12 @@ import 'package:google_maps_pro/Controller/MapScreenController.dart';
 import 'package:google_maps_pro/Repos/GetLocSocketEmit.dart';
 import 'package:google_maps_pro/Screens/RootScreen/RootScreen.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
+import 'package:logger/logger.dart';
 
 @pragma('vm:entry-point')
 void backgroundFetchHeadlessTask(HeadlessTask task) async {
+  var logger = Logger();
+  print("Event recieved !!!");
   try {
     Timer.periodic(const Duration(milliseconds: 1000), (timer) async {
       Position position = await Geolocator.getCurrentPosition(
@@ -20,9 +23,12 @@ void backgroundFetchHeadlessTask(HeadlessTask task) async {
       );
       // Log the new position
       print('New position gg: $position');
+      logger.d("New position received in the background");
     });
+    await GetLocSocketEmit().checkPermission();
   } catch (e) {
     print('Error getting position: $e');
+    logger.d("Error while taking position");
   }
   // Finish the background task
   BackgroundFetch.finish(task.taskId);
@@ -32,11 +38,12 @@ Future<void> main() async {
   final mapScreenController = Get.put(MapScreenController());
   WidgetsFlutterBinding.ensureInitialized();
   FlutterBackground.initialize();
-  BackgroundFetch.registerHeadlessTask(backgroundFetchHeadlessTask);
   await FlutterBackground.hasPermissions;
+  await FlutterBackground.enableBackgroundExecution();
+
   await BackgroundFetch.configure(
     BackgroundFetchConfig(
-      minimumFetchInterval: 5, // In minutes
+      minimumFetchInterval: 15, // In minutes
       stopOnTerminate: false,
       enableHeadless: true,
       requiresBatteryNotLow: false,
@@ -47,13 +54,15 @@ Future<void> main() async {
     ),
     backgroundFetchHeadlessTask,
     (String taskId) {
-      // This task has exceeded its allowed running-time.
-      // You must stop what you're doing and immediately .finish(taskId)
       print("[BackgroundFetch] Headless task timed-out: $taskId");
       BackgroundFetch.finish(taskId);
     },
-  );
-  await FlutterBackground.enableBackgroundExecution();
+  ).then((int status) {
+    print("Status: $status");
+  });
+
+  BackgroundFetch.registerHeadlessTask(backgroundFetchHeadlessTask);
+
   await GetLocSocketEmit().checkPermission();
   Connectivity().onConnectivityChanged.listen(
     (ConnectivityResult result) async {
@@ -72,7 +81,6 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // backgroundColor: ,
         colorScheme: ColorScheme.fromSeed(
             seedColor: Colors.deepPurple, background: Colors.white),
         useMaterial3: true,

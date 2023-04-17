@@ -21,12 +21,7 @@ class GetLocSocketEmit {
   Duration duration = const Duration(seconds: 1);
   late Timer timer;
   final mapScreenController = Get.put(MapScreenController());
-  var logger = Logger(
-      // filter: null,
-      // printer: LogfmtPrinter(),
-      // level: Logger.level,
-      // output: ConsoleOutput(),
-      );
+  var logger = Logger();
 
   void startTimer() {
     timer = Timer.periodic(duration, (timer) {
@@ -39,17 +34,6 @@ class GetLocSocketEmit {
     controller.time.value = 0;
     startTimer();
   }
-
-  // should be called when user pressed on the "Irlee" button
-
-  // Future<void> requestForegroundServicePermission() async {
-  //   final PermissionStatus permissionStatus =
-  //       await Permission.
-
-  //   if (permissionStatus == PermissionStatus.denied) {
-  //     // Handle the denied permission
-  //   }
-  // }
 
   Future<void> checkPermission() async {
     bool serviceEnabled;
@@ -139,7 +123,7 @@ class GetLocSocketEmit {
   }
 
   void socketEmit() {
-    if (controller.distance.value > 25 && controller.time.value > 10) {
+    if (controller.distance.value > 10) {
       var locationData = {
         'latitude': secondaryPos.latitude,
         'longitude': secondaryPos.longitude,
@@ -156,7 +140,7 @@ class GetLocSocketEmit {
   }
 
   void saveLocInList() {
-    if (controller.distance.value > 25) {
+    if (controller.distance.value > 10) {
       locList.add({
         'latitude': secondaryPos.latitude,
         'longitude': secondaryPos.longitude,

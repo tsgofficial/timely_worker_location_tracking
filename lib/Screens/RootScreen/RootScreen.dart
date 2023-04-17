@@ -33,7 +33,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _checkDeviceLock();
+    // _checkDeviceLock();
     getConnectivity();
     Functions().reqPermission();
     locDataController
@@ -78,7 +78,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   }
 
   bool _isInBackground = false;
-  bool _isDeviceLocked = false;
+  final bool _isDeviceLocked = false;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -94,13 +94,15 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _checkDeviceLock() async {
-    _isDeviceLocked =
-        (await const MethodChannel('plugins.flutter.io/device_info')
-            .invokeMethod<bool>('isDeviceLocked'))!;
-    print("app is locked ");
-    setState(() {});
-  }
+  // Future<void> _checkDeviceLock() async {
+  //   _isDeviceLocked =
+  //       (await const MethodChannel('plugins.flutter.io/device_info')
+  //           .invokeMethod<bool>('isDeviceLocked'))!;
+  //   setState(() {});
+  //   if (_isDeviceLocked == true) {
+  //     print("app is locked ");
+  //   }
+  // }
 
   final mapScreenController = Get.put(MapScreenController());
   final locDataController = Get.put(LocationDataController());
@@ -269,11 +271,11 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
           _points.add(
               LatLng(_currentPosition.latitude, _currentPosition.longitude));
           _polylinesStream.add(Polyline(
-            polylineId: const PolylineId('userLocation'),
-            visible: true,
+            polylineId: const PolylineId('polyline_id'),
+            // visible: true,
             points: _points.toList(),
-            color: Colors.blue,
-            width: 5,
+            color: CustomColors.MAIN_BLUE,
+            width: 7,
           ));
           endMarker = Marker(
             markerId: const MarkerId('end_marker'),

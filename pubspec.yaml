@@ -29,10 +29,9 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   background_fetch: ^1.1.5
-  background_locator_2: ^2.0.6
+  chalkdart: ^2.0.9
   connectivity_plus: ^3.0.3
   cupertino_icons: ^1.0.2
-  custom_timer: ^0.2.3
   device_info_plus: ^8.2.0
   flutter:
     sdk: flutter
