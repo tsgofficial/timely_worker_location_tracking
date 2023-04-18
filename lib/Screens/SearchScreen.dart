@@ -35,7 +35,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
         context: context,
-        initialDate: DateTime.now(),
+        initialDate: _selectedDate,
         firstDate: DateTime(2015),
         lastDate: DateTime(2101),
         builder: (context, child) {
@@ -55,7 +55,7 @@ class _SearchScreenState extends State<SearchScreen> {
             child: child!,
           );
         });
-    if (picked != null && picked != _selectedDate) {
+    if (picked != null) {
       setState(() {
         _selectedDate = picked;
         isDateSubmitted = true;

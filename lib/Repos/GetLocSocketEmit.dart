@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:chalkdart/chalk.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -72,7 +73,7 @@ class GetLocSocketEmit {
       );
 
       initialPos = LatLng(location.latitude, location.longitude);
-      print("took the 1st location $initialPos");
+      print(chalk.yellow.onBlue("took the 1st location $initialPos"));
       emitFirstLocation();
 
       const Duration duration = Duration(seconds: 5);
@@ -123,7 +124,7 @@ class GetLocSocketEmit {
   }
 
   void socketEmit() {
-    if (controller.distance.value > 10) {
+    if (controller.distance.value > 20) {
       var locationData = {
         'latitude': secondaryPos.latitude,
         'longitude': secondaryPos.longitude,
@@ -140,7 +141,7 @@ class GetLocSocketEmit {
   }
 
   void saveLocInList() {
-    if (controller.distance.value > 10) {
+    if (controller.distance.value > 20) {
       locList.add({
         'latitude': secondaryPos.latitude,
         'longitude': secondaryPos.longitude,

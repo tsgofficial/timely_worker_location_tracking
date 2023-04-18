@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'dart:io' show Platform;
@@ -87,6 +86,11 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
       // App is in the background
       _isInBackground = true;
       print("app changed to background");
+      var stream = Geolocator.getPositionStream();
+
+      stream.listen((position) {
+        print('new position $position');
+      });
     } else if (state == AppLifecycleState.resumed) {
       // App is in the foreground
       _isInBackground = false;
@@ -274,7 +278,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
             polylineId: const PolylineId('polyline_id'),
             // visible: true,
             points: _points.toList(),
-            color: CustomColors.MAIN_BLUE,
+            color: Colors.red,
             width: 7,
           ));
           endMarker = Marker(

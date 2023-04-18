@@ -9,6 +9,16 @@
 			<key>Allow it mf</key>
 			<string>The example App requires temporary access to the device&apos;s precise location.</string>
 		</dict>
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>location</string>
+		</array>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Your description why you should use NSLocationAlwaysAndWhenInUseUsageDescription</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>Your description why you should use NSLocationAlwaysAndWhenInUseUsageDescription</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Your description why you should use NSLocationAlwaysAndWhenInUseUsageDescription</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>This app needs access to location when open.</string>
 		<key>NSLocationAlwaysUsageDescription</key>
