@@ -61,9 +61,9 @@ class _SearchScreenState extends State<SearchScreen> {
         isDateSubmitted = true;
       });
       locDataController.getLocData(
-        64706,
+        70872,
         '1',
-        1,
+        70872,
         DateFormat('yyyy-MM-dd')
             .parse(_selectedDate.toString().substring(0, 10)),
       );
@@ -84,14 +84,22 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           title: isDateSubmitted
               ? Text(
-                  '${_selectedDate.toString().substring(0, 10)}-ны явсан зам',
+                  _selectedDate.toString().substring(9, 10) == "1" ||
+                          _selectedDate.toString().substring(9, 10) == "4" ||
+                          _selectedDate.toString().substring(9, 10) == "9"
+                      ? '${DateFormat("yyyy/MM/dd").format(_selectedDate).toString().substring(5, 10)}-ний явсан зам'
+                      : '${DateFormat("yyyy/MM/dd").format(_selectedDate).toString().substring(5, 10)}-ны явсан зам',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                   ),
                 )
               : Text(
-                  '${widget.date.toString().substring(0, 10)}-ны явсан зам',
+                  widget.date.toString().substring(9, 10) == "1" ||
+                          widget.date.toString().substring(9, 10) == "4" ||
+                          widget.date.toString().substring(9, 10) == "9"
+                      ? '${DateFormat("yyyy/MM/dd").format(widget.date).toString().substring(5, 10)}-ний явсан зам'
+                      : '${DateFormat("yyyy/MM/dd").format(widget.date).toString().substring(5, 10)}-ны явсан зам',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -115,7 +123,8 @@ class _SearchScreenState extends State<SearchScreen> {
           children: [
             Obx(
               () => locDataController.isLoading.value
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Expanded(
+                      child: Center(child: CircularProgressIndicator()))
                   : Obx(
                       () => locDataController.locList.isEmpty
                           ? const Expanded(
@@ -129,7 +138,9 @@ class _SearchScreenState extends State<SearchScreen> {
                                 itemCount: 1,
                                 itemBuilder: (context, index) {
                                   return WorkerPathList(
-                                    date: widget.date,
+                                    date: isDateSubmitted
+                                        ? _selectedDate
+                                        : widget.date,
                                     day: Functions().calculateDay().toString(),
                                     difference: Functions().calculateTime(),
                                     totalDistance:

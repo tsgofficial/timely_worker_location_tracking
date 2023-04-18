@@ -31,8 +31,6 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    // _checkDeviceLock();
     getConnectivity();
     Functions().reqPermission();
     locDataController
@@ -76,35 +74,22 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  bool _isInBackground = false;
-  final bool _isDeviceLocked = false;
+  // @override
+  // void didChangeAppLifecycleState(AppLifecycleState state) {
+  //   super.didChangeAppLifecycleState(state);
+  //   if (state == AppLifecycleState.paused) {
+  //     // App is in the background
+  //     _isInBackground = true;
+  //     print("app changed to background");
+  //     var stream = Geolocator.getPositionStream();
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.paused) {
-      // App is in the background
-      _isInBackground = true;
-      print("app changed to background");
-      var stream = Geolocator.getPositionStream();
-
-      stream.listen((position) {
-        print('new position $position');
-      });
-    } else if (state == AppLifecycleState.resumed) {
-      // App is in the foreground
-      _isInBackground = false;
-      print("app returned to foreground");
-    }
-  }
-
-  // Future<void> _checkDeviceLock() async {
-  //   _isDeviceLocked =
-  //       (await const MethodChannel('plugins.flutter.io/device_info')
-  //           .invokeMethod<bool>('isDeviceLocked'))!;
-  //   setState(() {});
-  //   if (_isDeviceLocked == true) {
-  //     print("app is locked ");
+  //     stream.listen((position) {
+  //       print('new position $position');
+  //     });
+  //   } else if (state == AppLifecycleState.resumed) {
+  //     // App is in the foreground
+  //     _isInBackground = false;
+  //     print("app returned to foreground");
   //   }
   // }
 
@@ -127,8 +112,13 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   bool isInitialPositionSet = false;
   bool isSetMarkers = false;
   bool isUserPressedYvlaa = false;
-  CameraPosition _initialCameraPosition = const CameraPosition(
-    target: LatLng(47.921556, 106.917126),
+  late CameraPosition _initialCameraPosition = CameraPosition(
+    target: locDataController.locList.isNotEmpty
+        ? LatLng(
+            double.parse(locDataController.locList.last.longitude!),
+            double.parse(locDataController.locList.last.latitude!),
+          )
+        : const LatLng(47.921556, 106.917126),
     zoom: 16,
   );
 
@@ -171,7 +161,9 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
           double.parse(locDataController.locList.last.latitude!),
           double.parse(locDataController.locList.last.longitude!),
         ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        icon: BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueYellow,
+        ),
       );
       _markers.add(startMarker);
       _markers.add(endMarker);
@@ -285,8 +277,9 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
             markerId: const MarkerId('end_marker'),
             position:
                 LatLng(_currentPosition.latitude, _currentPosition.longitude),
-            icon:
-                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueYellow,
+            ),
           );
         });
         double distance = Geolocator.distanceBetween(
@@ -392,7 +385,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                               ),
                             ),
                             Text(
-                              _elapsedTime.toString().substring(0, 10),
+                              "${_elapsedTime.toString().substring(0, 8)} ц",
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -407,52 +400,84 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                 ),
               ),
               Expanded(
-                child: SizedBox(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5.0,
-                      vertical: 5,
-                    ),
-                    child: Stack(
-                      children: [
-                        GoogleMap(
-                            myLocationButtonEnabled: true,
-                            myLocationEnabled: true,
-                            markers: _markers,
-                            onMapCreated: (GoogleMapController controller) {
-                              _controller.complete(controller);
-                              getPositionStream();
-                            },
-                            polylines: _polylinesStream,
-                            initialCameraPosition: _initialCameraPosition,
-                            mapType: MapType.normal),
-                        Positioned(
-                          top: 10,
-                          left: 10,
-                          child: IconButton(
-                            onPressed: () {
-                              Get.to(
-                                () => MapScreen(
-                                  date: DateTime.now(),
-                                  totalDistance:
-                                      Functions().calculateDistance(),
-                                  totalTime:
-                                      Functions().calculateTime().toString(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(
-                              size: 35,
-                              Icons.zoom_in_map_outlined,
-                              color: Color(0xffF04262),
-                            ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5.0,
+                    vertical: 5,
+                  ),
+                  child: Stack(
+                    children: [
+                      GoogleMap(
+                          myLocationButtonEnabled: true,
+                          myLocationEnabled: true,
+                          markers: _markers,
+                          onMapCreated: (GoogleMapController controller) {
+                            _controller.complete(controller);
+                          },
+                          polylines: _polylinesStream,
+                          initialCameraPosition: _initialCameraPosition,
+                          mapType: MapType.normal),
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: IconButton(
+                          onPressed: () {
+                            Get.to(
+                              () => MapScreen(
+                                date: DateTime.now(),
+                                totalDistance: Functions().calculateDistance(),
+                                totalTime:
+                                    Functions().calculateTime().toString(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(
+                            size: 35,
+                            Icons.zoom_in_map_outlined,
+                            color: Color(0xffF04262),
                           ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Container(
+                  width: MediaQuery.of(context).size.width - 100,
+                  decoration: BoxDecoration(
+                    color: CustomColors.MAIN_BLUE,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.location_on, color: Colors.greenAccent),
+                            Text(
+                              "- эхлэсэн",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: const [
+                            Icon(Icons.location_on, color: Colors.yellowAccent),
+                            Text(
+                              "- дууссан",
+                              style: TextStyle(color: Colors.white),
+                            )
+                          ],
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
+              )
             ],
           ),
         ),
@@ -463,7 +488,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
         context: context,
-        initialDate: DateTime.now(),
+        initialDate: _selectedDate,
         firstDate: DateTime(2015),
         lastDate: DateTime(2101),
         builder: (context, child) {
@@ -483,7 +508,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
             child: child!,
           );
         });
-    if (picked != null && picked != _selectedDate) {
+    if (picked != null) {
       setState(() {
         _selectedDate = picked;
       });

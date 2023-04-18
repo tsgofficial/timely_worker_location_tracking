@@ -31,6 +31,7 @@ void backgroundFetchHeadlessTask(HeadlessTask task) async {
     'longitude': position.longitude,
     'stay_time': 15 * 60,
     'user_id': 70872,
+    'created_at': DateTime.now().toString(),
   };
   socket.emit('location', locationData);
 
@@ -56,9 +57,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FlutterBackground.initialize();
   await FlutterBackground.hasPermissions;
-  await FlutterBackground.enableBackgroundExecution().then((value) async {
-    await Geolocator.getCurrentPosition();
-  });
+  await FlutterBackground.enableBackgroundExecution();
 
   // await pro.BackgroundLocationTrackerManager.initialize(
   //   backgroundCallback,

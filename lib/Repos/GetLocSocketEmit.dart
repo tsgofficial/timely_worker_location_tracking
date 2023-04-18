@@ -130,6 +130,7 @@ class GetLocSocketEmit {
         'longitude': secondaryPos.longitude,
         'stay_time': controller.time.value,
         'user_id': 70872,
+        'created_at': DateTime.now().toString(),
       };
       socket.emit('location', locationData);
       print('socket emitted directly');

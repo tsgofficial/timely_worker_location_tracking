@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:intl/intl.dart';
 
 import '../Components/CustomColors.dart';
-import '../Controller/GoogleMapsController.dart';
 import '../Controller/LocationDataController.dart';
 
 class MapScreen extends StatefulWidget {
@@ -31,7 +31,6 @@ class MapScreenState extends State<MapScreen> {
   }
 
   final controller = Get.put(LocationDataController());
-  final googleMapsController = Get.put(GoogleMapsController());
   late LatLng currentLocation;
   late LatLng destinationLocation;
   final Set<Polyline> _polylines = <Polyline>{};
@@ -39,34 +38,14 @@ class MapScreenState extends State<MapScreen> {
       Completer<GoogleMapController>();
   List<LatLng> polylineCoordinates = [];
   bool isLoading = false;
-  late final CameraPosition _initialCameraPosition = CameraPosition(
-    target: LatLng(
-      double.parse(controller.locList.first.latitude!),
-      double.parse(controller.locList.first.longitude!),
-    ),
-    zoom: 16,
-  );
+  late Marker startMarker;
+  late Marker endMarker;
+  late CameraPosition initialCameraPosition;
 
-  late Marker startMarker = Marker(
-    markerId: const MarkerId('start_marker'),
-    position: LatLng(
-      double.parse(controller.locList.first.latitude!),
-      double.parse(controller.locList.first.longitude!),
-    ),
-    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-  );
-
-  late Marker endMarker = Marker(
-    markerId: const MarkerId('start_marker'),
-    position: LatLng(
-      double.parse(controller.locList.last.latitude!),
-      double.parse(controller.locList.last.longitude!),
-    ),
-    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-  );
-
-  void getLocs() {
-    googleMapsController.isLoading.value = true;
+  Future<void> getLocs() async {
+    setState(() {
+      isLoading = true;
+    });
     for (int i = 0; i < controller.locList.length - 1; i++) {
       polylineCoordinates.add(
         LatLng(
@@ -76,7 +55,10 @@ class MapScreenState extends State<MapScreen> {
       );
     }
     setPolylines();
-    googleMapsController.isLoading.value = false;
+    setProperties();
+    setState(() {
+      isLoading = false;
+    });
   }
 
   void setPolylines() {
@@ -87,9 +69,38 @@ class MapScreenState extends State<MapScreen> {
           width: 7,
           polylineId: const PolylineId('polyline_id'),
           points: polylineCoordinates,
+          geodesic: false,
         ),
       );
     });
+  }
+
+  void setProperties() {
+    initialCameraPosition = CameraPosition(
+      target: LatLng(
+        double.parse(controller.locList.first.latitude!),
+        double.parse(controller.locList.first.longitude!),
+      ),
+      zoom: 16,
+    );
+
+    startMarker = Marker(
+      markerId: const MarkerId('start_marker'),
+      position: LatLng(
+        double.parse(controller.locList.first.latitude!),
+        double.parse(controller.locList.first.longitude!),
+      ),
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+    );
+
+    endMarker = Marker(
+      markerId: const MarkerId('start_marker'),
+      position: LatLng(
+        double.parse(controller.locList.last.latitude!),
+        double.parse(controller.locList.last.longitude!),
+      ),
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow),
+    );
   }
 
   @override
@@ -106,7 +117,11 @@ class MapScreenState extends State<MapScreen> {
             ),
           ),
           title: Text(
-            '${widget.date.toString().substring(0, 10)}-ны явсан зам',
+            widget.date.toString().substring(9, 10) == "1" ||
+                    widget.date.toString().substring(9, 10) == "4" ||
+                    widget.date.toString().substring(9, 10) == "9"
+                ? '${DateFormat("yyyy/MM/dd").format(widget.date).toString().substring(0, 10)}-ний явсан түүх'
+                : '${DateFormat("yyyy/MM/dd").format(widget.date).toString().substring(0, 10)}-ны явсан түүх',
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 18,
@@ -140,7 +155,7 @@ class MapScreenState extends State<MapScreen> {
                             ),
                           ),
                           Text(
-                            '${widget.totalDistance.toString().substring(0, 5)} км',
+                            '${widget.totalDistance.toString().substring(0, 3)} км',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -160,8 +175,7 @@ class MapScreenState extends State<MapScreen> {
                             ),
                           ),
                           Text(
-                            '${widget.totalTime.toString().substring(0, 1)} ц'
-                            ' ${widget.totalTime.toString().substring(2, 4)} м',
+                            '${widget.totalTime.toString().substring(0, 8)} ц',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -175,37 +189,66 @@ class MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
-            Obx(
-              () => googleMapsController.isLoading.value
-                  ? const Center(
-                      child: CircularProgressIndicator(),
-                    )
-                  : SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.8,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5.0,
-                          vertical: 5,
-                        ),
-                        child: GoogleMap(
-                          myLocationButtonEnabled: true,
-                          myLocationEnabled: true,
-                          markers: <Marker>{
-                            startMarker,
-                            endMarker,
-                          },
-                          onMapCreated: (GoogleMapController controller) {
-                            _controller.complete(controller);
-                            // setPolylines();
-                            getLocs();
-                          },
-                          polylines: _polylines,
-                          initialCameraPosition: _initialCameraPosition,
-                          mapType: MapType.normal,
-                        ),
+            isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5.0,
+                        vertical: 5,
+                      ),
+                      child: GoogleMap(
+                        myLocationButtonEnabled: true,
+                        myLocationEnabled: true,
+                        markers: <Marker>{
+                          startMarker,
+                          endMarker,
+                        },
+                        onMapCreated: (GoogleMapController controller) {
+                          _controller.complete(controller);
+                        },
+                        polylines: _polylines,
+                        initialCameraPosition: initialCameraPosition,
+                        mapType: MapType.normal,
                       ),
                     ),
-            ),
+                  ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Container(
+                width: MediaQuery.of(context).size.width - 100,
+                decoration: BoxDecoration(
+                  color: CustomColors.MAIN_BLUE,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(Icons.location_on, color: Colors.greenAccent),
+                          Text(
+                            "- эхлэсэн",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: const [
+                          Icon(Icons.location_on, color: Colors.yellowAccent),
+                          Text(
+                            "- дууссан",
+                            style: TextStyle(color: Colors.white),
+                          )
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
           ],
         ),
       ),

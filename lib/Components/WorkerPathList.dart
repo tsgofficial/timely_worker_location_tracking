@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 
 import '../Screens/MapScreen.dart';
 import 'CustomColors.dart';
@@ -49,7 +50,10 @@ class _WorkerPathListState extends State<WorkerPathList> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.date.toString().substring(0, 10),
+                    DateFormat("yyyy/MM/dd")
+                        .format(widget.date)
+                        .toString()
+                        .substring(0, 10),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -93,7 +97,7 @@ class _WorkerPathListState extends State<WorkerPathList> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8.0, vertical: 15),
                       child: Text(
-                        '${widget.totalDistance.toString().substring(0, 5)} км',
+                        '${widget.totalDistance.toString().substring(0, 3)} км',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -111,8 +115,7 @@ class _WorkerPathListState extends State<WorkerPathList> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8.0, vertical: 15),
                       child: Text(
-                        '${widget.difference.toString().substring(0, 1)} ц'
-                        ' ${widget.difference.toString().substring(2, 4)} м',
+                        '${widget.difference.toString().substring(0, 8)} ц',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
