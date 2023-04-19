@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:background_fetch/background_fetch.dart';
 import 'package:chalkdart/chalk.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -13,35 +12,65 @@ import 'package:google_maps_pro/Screens/RootScreen/RootScreen.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:logger/logger.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:workmanager/workmanager.dart';
 
 IO.Socket socket = IO.io('http://16.162.14.221:4000/', <String, dynamic>{
   'transports': ['websocket'],
 });
 
 @pragma('vm:entry-point')
-void backgroundFetchHeadlessTask(HeadlessTask task) async {
-  var logger = Logger();
-  Position position = await Geolocator.getCurrentPosition(
-    desiredAccuracy: LocationAccuracy.best,
-    forceAndroidLocationManager: true,
-  );
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    socket.connect();
+    socket.onConnect((data) async {
+      var logger = Logger();
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+        forceAndroidLocationManager: true,
+      );
 
-  var locationData = {
-    'latitude': position.latitude,
-    'longitude': position.longitude,
-    'stay_time': 15 * 60,
-    'user_id': 70872,
-    'created_at': DateTime.now().toString(),
-  };
-  socket.emit('location', locationData);
+      var locationData = {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'stay_time': 15 * 60,
+        'user_id': 70872,
+        'created_at': DateTime.now().toString(),
+      };
+      socket.emit('location', locationData);
 
-  print(chalk.yellow.onBlue(
-      "New position $position received in the background at ${DateTime.now()} and emitted !!!"));
-  logger.d(chalk.yellow.onBlue(
-      "New position $position received in the background at ${DateTime.now()} and emitted !!!"));
-
-  BackgroundFetch.finish(task.taskId);
+      print(chalk.yellow.onBlue(
+          "New position $position received in the background at ${DateTime.now()} and emitted !!!"));
+      logger.d(chalk.yellow.onBlue(
+          "New position $position received in the background at ${DateTime.now()} and emitted !!!"));
+    });
+    return Future.value(true);
+  });
 }
+
+// @pragma('vm:entry-point')
+// void backgroundFetchHeadlessTask(HeadlessTask task) async {
+//   var logger = Logger();
+//   Position position = await Geolocator.getCurrentPosition(
+//     desiredAccuracy: LocationAccuracy.best,
+//     forceAndroidLocationManager: true,
+//   );
+
+//   var locationData = {
+//     'latitude': position.latitude,
+//     'longitude': position.longitude,
+//     'stay_time': 15 * 60,
+//     'user_id': 70872,
+//     'created_at': DateTime.now().toString(),
+//   };
+//   socket.emit('location', locationData);
+
+//   print(chalk.yellow.onBlue(
+//       "New position $position received in the background at ${DateTime.now()} and emitted !!!"));
+//   logger.d(chalk.yellow.onBlue(
+//       "New position $position received in the background at ${DateTime.now()} and emitted !!!"));
+
+//   BackgroundFetch.finish(task.taskId);
+// }
 
 // @pragma('vm:entry-point')
 // void backgroundCallback() {
@@ -58,6 +87,17 @@ Future<void> main() async {
   await FlutterBackground.initialize();
   await FlutterBackground.hasPermissions;
   await FlutterBackground.enableBackgroundExecution();
+
+  Workmanager().initialize(
+    callbackDispatcher,
+    isInDebugMode: true,
+  );
+
+  Workmanager().registerPeriodicTask(
+    'location_update',
+    'location_update_task',
+    frequency: const Duration(minutes: 15),
+  );
 
   // await pro.BackgroundLocationTrackerManager.initialize(
   //   backgroundCallback,
@@ -76,28 +116,28 @@ Future<void> main() async {
   //   ),
   // );
 
-  await BackgroundFetch.configure(
-    BackgroundFetchConfig(
-      minimumFetchInterval: 15, // In minutes
-      stopOnTerminate: false,
-      enableHeadless: true,
-      requiresBatteryNotLow: false,
-      requiresCharging: false,
-      requiresDeviceIdle: false,
-      requiresStorageNotLow: false,
-      startOnBoot: true,
-      forceAlarmManager: true,
-    ),
-    backgroundFetchHeadlessTask,
-    (String taskId) {
-      print("[BackgroundFetch] Headless task timed-out: $taskId");
-      BackgroundFetch.finish(taskId);
-    },
-  ).then((int status) {
-    print("Status: $status");
-  });
+  // await BackgroundFetch.configure(
+  //   BackgroundFetchConfig(
+  //     minimumFetchInterval: 15, // In minutes
+  //     stopOnTerminate: false,
+  //     enableHeadless: true,
+  //     requiresBatteryNotLow: false,
+  //     requiresCharging: false,
+  //     requiresDeviceIdle: false,
+  //     requiresStorageNotLow: false,
+  //     startOnBoot: true,
+  //     forceAlarmManager: true,
+  //   ),
+  //   backgroundFetchHeadlessTask,
+  //   (String taskId) {
+  //     print("[BackgroundFetch] Headless task timed-out: $taskId");
+  //     BackgroundFetch.finish(taskId);
+  //   },
+  // ).then((int status) {
+  //   print("Status: $status");
+  // });
 
-  BackgroundFetch.registerHeadlessTask(backgroundFetchHeadlessTask);
+  // BackgroundFetch.registerHeadlessTask(backgroundFetchHeadlessTask);
 
   await GetLocSocketEmit().checkPermission();
   Connectivity().onConnectivityChanged.listen(

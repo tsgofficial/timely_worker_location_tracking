@@ -11,7 +11,6 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_maps_pro/Controller/LocationDataController.dart';
 import 'package:google_maps_pro/Controller/MapScreenController.dart';
 import 'package:google_maps_pro/Screens/SearchScreen.dart';
-import 'package:google_maps_pro/random.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:intl/intl.dart';
 
@@ -28,6 +27,29 @@ class RootScreen extends StatefulWidget {
 }
 
 class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
+  final mapScreenController = Get.put(MapScreenController());
+  final locDataController = Get.put(LocationDataController());
+  DateTime _selectedDate = DateTime.now();
+  late StreamSubscription subscription;
+  final Completer<GoogleMapController> _controller = Completer();
+  late final Marker startMarker;
+  late Marker endMarker;
+  late StreamSubscription<Position> _positionStream;
+  late Position _currentPosition;
+  late Position _previousPosition;
+  final Set<LatLng> _points = {};
+  final Set<Marker> _markers = {};
+  final Set<Polyline> _polylinesStream = <Polyline>{};
+  late Duration _elapsedTime = Duration.zero;
+  late Timer _timer;
+  double totalDistance = 0;
+  bool isSetMarkers = false;
+  bool isUserPressedYvlaa = false;
+  CameraPosition _initialCameraPosition = const CameraPosition(
+    target: LatLng(47.920476, 106.917490),
+    zoom: 16,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -46,16 +68,26 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
         setMarkers();
         getLocsFromAPI();
         estimateInitialTimeAndDistance();
-      }
-      if (isUserPressedYvlaa == false) {
-        setState(() {
-          _elapsedTime += DateTime.now().difference(DateTime.parse(
-              DateFormat("yyyy-MM-dd hh:mm:ss.ssss")
-                  .format(locDataController.locList.last.createdAt!)));
-        });
+        if (isUserPressedYvlaa == false) {
+          setState(() {
+            _elapsedTime += DateTime.now().difference(DateTime.parse(
+                DateFormat("yyyy-MM-dd hh:mm:ss.ssss")
+                    .format(locDataController.locList.last.createdAt!)));
+          });
+          setState(() {
+            _initialCameraPosition = CameraPosition(
+              target: LatLng(
+                double.parse(locDataController.locList.last.longitude!),
+                double.parse(locDataController.locList.last.latitude!),
+              ),
+              zoom: 16,
+            );
+            // goToPosition(_initialCameraPosition);
+          });
+        }
       }
     });
-    initPositions().whenComplete(() {
+    takeFirstLoc().whenComplete(() {
       getPositionStream();
     });
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
@@ -67,70 +99,29 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     subscription.cancel();
     _positionStream.cancel();
     _timer.cancel();
     super.dispose();
   }
 
-  // @override
-  // void didChangeAppLifecycleState(AppLifecycleState state) {
-  //   super.didChangeAppLifecycleState(state);
-  //   if (state == AppLifecycleState.paused) {
-  //     // App is in the background
-  //     _isInBackground = true;
-  //     print("app changed to background");
-  //     var stream = Geolocator.getPositionStream();
-
-  //     stream.listen((position) {
-  //       print('new position $position');
-  //     });
-  //   } else if (state == AppLifecycleState.resumed) {
-  //     // App is in the foreground
-  //     _isInBackground = false;
-  //     print("app returned to foreground");
-  //   }
-  // }
-
-  final mapScreenController = Get.put(MapScreenController());
-  final locDataController = Get.put(LocationDataController());
-  DateTime _selectedDate = DateTime.now();
-  late StreamSubscription subscription;
-  final Completer<GoogleMapController> _controller = Completer();
-  late final Marker startMarker;
-  late Marker endMarker;
-  late StreamSubscription<Position> _positionStream;
-  late Position _currentPosition;
-  late Position _previousPosition;
-  final Set<LatLng> _points = {};
-  final Set<Marker> _markers = {};
-  final Set<Polyline> _polylinesStream = <Polyline>{};
-  late Duration _elapsedTime = Duration.zero;
-  late Timer _timer;
-  double totalDistance = 0;
-  bool isInitialPositionSet = false;
-  bool isSetMarkers = false;
-  bool isUserPressedYvlaa = false;
-  late CameraPosition _initialCameraPosition = CameraPosition(
-    target: locDataController.locList.isNotEmpty
-        ? LatLng(
-            double.parse(locDataController.locList.last.longitude!),
-            double.parse(locDataController.locList.last.latitude!),
-          )
-        : const LatLng(47.921556, 106.917126),
-    zoom: 16,
-  );
-
-  Future<void> initPositions() async {
+  Future<void> takeFirstLoc() async {
     _currentPosition = await Geolocator.getCurrentPosition();
-    setState(() {
-      isInitialPositionSet = true;
-      _initialCameraPosition = CameraPosition(
-        target: LatLng(_currentPosition.latitude, _currentPosition.longitude),
-        zoom: 16,
-      );
-    });
+    if (locDataController.locList.isEmpty) {
+      setState(() {
+        _initialCameraPosition = CameraPosition(
+          target: LatLng(_currentPosition.latitude, _currentPosition.longitude),
+          zoom: 16,
+        );
+        // goToPosition(_initialCameraPosition);
+      });
+    }
+  }
+
+  void goToPosition(CameraPosition initialCameraPosition) async {
+    final GoogleMapController controller = await _controller.future;
+    controller
+        .animateCamera(CameraUpdate.newCameraPosition(initialCameraPosition));
   }
 
   void setMarkers() {
@@ -248,26 +239,24 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
           ? AndroidSettings(
               forceLocationManager: true,
               accuracy: LocationAccuracy.best,
-              distanceFilter: 5,
             )
           : const LocationSettings(
               accuracy: LocationAccuracy.best,
-              distanceFilter: 5,
             ),
     ).listen((Position newPosition) {
       print("receiving location stream $newPosition");
-      if (newPosition.accuracy < 5 && newPosition.speed < 25) {
+      if (newPosition.accuracy < 5 && newPosition.speed < 15) {
         setState(() {
           _previousPosition = _currentPosition;
           _currentPosition = newPosition;
-          var s = KalmanFilter.filter(
-            [_previousPosition.latitude, _previousPosition.longitude],
-            [_currentPosition.latitude, _currentPosition.longitude],
-          );
+          // var s = KalmanFilter.filter(
+          //   [_previousPosition.latitude, _previousPosition.longitude],
+          //   [_currentPosition.latitude, _currentPosition.longitude],
+          // );
           _points.add(
               LatLng(_currentPosition.latitude, _currentPosition.longitude));
           _polylinesStream.add(Polyline(
-            polylineId: const PolylineId('polyline_id'),
+            polylineId: const PolylineId('new_polylines'),
             // visible: true,
             points: _points.toList(),
             color: Colors.red,
@@ -408,15 +397,19 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                   child: Stack(
                     children: [
                       GoogleMap(
-                          myLocationButtonEnabled: true,
-                          myLocationEnabled: true,
-                          markers: _markers,
-                          onMapCreated: (GoogleMapController controller) {
-                            _controller.complete(controller);
-                          },
-                          polylines: _polylinesStream,
-                          initialCameraPosition: _initialCameraPosition,
-                          mapType: MapType.normal),
+                        myLocationButtonEnabled: true,
+                        myLocationEnabled: true,
+                        markers: _markers,
+                        onMapCreated: (GoogleMapController controller) {
+                          _controller.complete(controller);
+                        },
+                        polylines: _polylinesStream,
+                        initialCameraPosition: _initialCameraPosition,
+                        mapType: MapType.normal,
+                        onCameraMove: (position) {
+                          position = _initialCameraPosition;
+                        },
+                      ),
                       Positioned(
                         top: 10,
                         left: 10,

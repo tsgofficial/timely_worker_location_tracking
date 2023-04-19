@@ -102,8 +102,7 @@ class GetLocSocketEmit {
         desiredAccuracy: LocationAccuracy.best,
         forceAndroidLocationManager: true,
       );
-      // print("location2: $location");
-    } while (location.accuracy > 5 && location.speed > 25);
+    } while (location.accuracy > 8 && location.speed > 17);
 
     secondaryPos = LatLng(location.latitude, location.longitude);
     print("took the 2nd loc: $secondaryPos");
@@ -115,7 +114,6 @@ class GetLocSocketEmit {
       secondaryPos.longitude,
     );
     print('estimated distance: ${controller.distance.value}');
-    // print('2 $secondaryPos');
     if (mapScreenController.isDeviceConnected.value) {
       socketEmit();
     } else {
@@ -165,31 +163,4 @@ class GetLocSocketEmit {
       locList.clear();
     }
   }
-
-  // Future<void> getPositionStream() async {
-  //   //   Geolocator.getPositionStream(
-  //   //     locationSettings: Platform.isAndroid
-  //   //         ? AndroidSettings(
-  //   //             forceLocationManager: true,
-  //   //             accuracy: LocationAccuracy.best,
-  //   //             distanceFilter: 5,
-  //   //           )
-  //   //         : const LocationSettings(
-  //   //             accuracy: LocationAccuracy.best,
-  //   //             distanceFilter: 5,
-  //   //           ),
-  //   //   ).listen((Position position) {
-  //   //     print("new position $position");
-  //   //   });
-  //   // }
-  //   Timer.periodic(
-  //     const Duration(milliseconds: 1000),
-  //     (timer) async {
-  //       Position newPosition = await Geolocator.getCurrentPosition();
-  //       // print('new position $newPosition');
-  //       // print('got new position');
-  //       logger.d("new position $newPosition");
-  //     },
-  //   );
-  // }
 }
