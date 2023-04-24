@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_maps_pro/Controller/LocationDataController.dart';
 import 'package:google_maps_pro/Controller/MapScreenController.dart';
+import 'package:google_maps_pro/Repos/GetLocSocketEmit.dart';
 import 'package:google_maps_pro/Screens/SearchScreen.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:intl/intl.dart';
@@ -49,6 +50,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     target: LatLng(47.920476, 106.917490),
     zoom: 16,
   );
+  bool isWorkerAtWork = false;
 
   @override
   void initState() {
@@ -57,7 +59,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     Functions().reqPermission();
     locDataController
         .getLocData(
-      70872,
+      99999,
       '1',
       70872,
       DateFormat('yyyy-MM-dd')
@@ -68,7 +70,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
         setMarkers();
         getLocsFromAPI();
         estimateInitialTimeAndDistance();
-        if (isUserPressedYvlaa == false) {
+        if (isWorkerAtWork == true) {
           setState(() {
             _elapsedTime += DateTime.now().difference(DateTime.parse(
                 DateFormat("yyyy-MM-dd hh:mm:ss.ssss")
@@ -90,11 +92,13 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     takeFirstLoc().whenComplete(() {
       getPositionStream();
     });
-    _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
-      setState(() {
-        _elapsedTime = _elapsedTime + const Duration(seconds: 1);
+    while (isWorkerAtWork == true) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
+        setState(() {
+          _elapsedTime = _elapsedTime + const Duration(seconds: 1);
+        });
       });
-    });
+    }
   }
 
   @override
@@ -244,7 +248,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
               accuracy: LocationAccuracy.best,
             ),
     ).listen((Position newPosition) {
-      print("receiving location stream $newPosition");
+      // print("receiving location stream $newPosition");
       if (newPosition.accuracy < 5 && newPosition.speed < 15) {
         setState(() {
           _previousPosition = _currentPosition;
@@ -278,9 +282,9 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
           _currentPosition.longitude,
         );
         totalDistance += distance / 1000;
-        print("got high accuracy position");
+        // print("got high accuracy position");
       } else {
-        print("skipped a low position!");
+        // print("skipped a low position!");
       }
     });
   }
@@ -428,6 +432,107 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                             size: 35,
                             Icons.zoom_in_map_outlined,
                             color: Color(0xffF04262),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 100,
+                        left: 10,
+                        child: InkWell(
+                          onTap: () async {
+                            await GetLocSocketEmit().checkPermission();
+                            setState(() {
+                              isWorkerAtWork = false;
+                            });
+                            _timer = Timer.periodic(const Duration(seconds: 1),
+                                (Timer timer) {
+                              setState(() {
+                                _elapsedTime =
+                                    _elapsedTime + const Duration(seconds: 1);
+                              });
+                            });
+                            // ignore: use_build_context_synchronously
+                            showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    title: const Text(
+                                        "Location Tracking started !!!"),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                        },
+                                        child: const Text("Haah"),
+                                      ),
+                                    ],
+                                  );
+                                });
+                          },
+                          child: Container(
+                            height: 60,
+                            width: 60,
+                            decoration: BoxDecoration(
+                                color: Colors.amber,
+                                border:
+                                    Border.all(color: Colors.black, width: 1),
+                                borderRadius: BorderRadius.circular(2000000)),
+                            child: const Center(
+                              child: Text(
+                                "Irlee",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 20,
+                        left: 10,
+                        child: InkWell(
+                          onTap: () {
+                            GetLocSocketEmit().stopLocationTracking();
+                            setState(() {
+                              isWorkerAtWork = true;
+                            });
+                            _timer.cancel();
+                            showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    title: const Text(
+                                        "Location Tracking stopped !!!"),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                        },
+                                        child: const Text("Haah"),
+                                      ),
+                                    ],
+                                  );
+                                });
+                          },
+                          child: Container(
+                            height: 60,
+                            width: 60,
+                            decoration: BoxDecoration(
+                                color: Colors.amber,
+                                border:
+                                    Border.all(color: Colors.black, width: 1),
+                                borderRadius: BorderRadius.circular(2000000)),
+                            child: const Center(
+                              child: Text(
+                                "Yvlaa",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
