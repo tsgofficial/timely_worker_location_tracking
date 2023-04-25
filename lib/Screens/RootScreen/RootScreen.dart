@@ -14,6 +14,7 @@ import 'package:google_maps_pro/Repos/GetLocSocketEmit.dart';
 import 'package:google_maps_pro/Screens/SearchScreen.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:intl/intl.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 import '../../Components/CustomColors.dart';
 import '../MapScreen.dart';
@@ -51,10 +52,26 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     zoom: 16,
   );
   bool isWorkerAtWork = false;
+  IO.Socket socket = IO.io('http://16.162.14.221:4000/', <String, dynamic>{
+    'transports': ['websocket'],
+  });
+  AppLifecycleState? _appLifecycleState;
 
   @override
   void initState() {
     super.initState();
+    socket.connect();
+    socket.onConnect((_) {
+      print('----- connected');
+      socket.emit("location", {
+        'latitude': 48.00000,
+        'longitude': 127.00000,
+        'stay_time': 9999,
+        'user_id': 70872,
+        'created_at': DateTime.now().toString(),
+      });
+    });
+    WidgetsBinding.instance.addObserver(this);
     getConnectivity();
     Functions().reqPermission();
     locDataController
@@ -103,10 +120,25 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     subscription.cancel();
     _positionStream.cancel();
     _timer.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    if (_appLifecycleState == AppLifecycleState.inactive ||
+        _appLifecycleState == AppLifecycleState.paused) {
+      // Perform background fetch task here
+      const int alarmID = 0;
+      // await AndroidAlarmManager.periodic(
+      //     const Duration(minutes: 1), alarmID, getLocation);
+    }
   }
 
   Future<void> takeFirstLoc() async {
@@ -117,7 +149,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
           target: LatLng(_currentPosition.latitude, _currentPosition.longitude),
           zoom: 16,
         );
-        // goToPosition(_initialCameraPosition);
+        goToPosition(_initialCameraPosition);
       });
     }
   }
@@ -403,7 +435,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                       GoogleMap(
                         myLocationButtonEnabled: true,
                         myLocationEnabled: true,
-                        markers: _markers,
+                        markers: Set<Marker>.of(_markers),
                         onMapCreated: (GoogleMapController controller) {
                           _controller.complete(controller);
                         },
@@ -440,16 +472,19 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                         left: 10,
                         child: InkWell(
                           onTap: () async {
-                            await GetLocSocketEmit().checkPermission();
-                            setState(() {
-                              isWorkerAtWork = false;
-                            });
-                            _timer = Timer.periodic(const Duration(seconds: 1),
-                                (Timer timer) {
-                              setState(() {
-                                _elapsedTime =
-                                    _elapsedTime + const Duration(seconds: 1);
+                            await GetLocSocketEmit().initSocket();
+
+                            if (!isWorkerAtWork) {
+                              _timer = Timer.periodic(
+                                  const Duration(seconds: 1), (Timer timer) {
+                                setState(() {
+                                  _elapsedTime =
+                                      _elapsedTime + const Duration(seconds: 1);
+                                });
                               });
+                            }
+                            setState(() {
+                              isWorkerAtWork = true;
                             });
                             // ignore: use_build_context_synchronously
                             showDialog(
@@ -496,7 +531,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                           onTap: () {
                             GetLocSocketEmit().stopLocationTracking();
                             setState(() {
-                              isWorkerAtWork = true;
+                              isWorkerAtWork = false;
                             });
                             _timer.cancel();
                             showDialog(

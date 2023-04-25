@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
@@ -41,6 +42,8 @@ class MapScreenState extends State<MapScreen> {
   late Marker startMarker;
   late Marker endMarker;
   late CameraPosition initialCameraPosition;
+  final Set<Marker> _markers = {};
+  final Set<Circle> _circles = {};
 
   Future<void> getLocs() async {
     setState(() {
@@ -56,9 +59,89 @@ class MapScreenState extends State<MapScreen> {
     }
     setPolylines();
     setProperties();
+    displayElapsedLocation();
     setState(() {
       isLoading = false;
     });
+  }
+
+  double totalDistance = 0;
+  int counter = 0;
+  // int initialIndex = 0;
+
+  List<DateTime> elapsedLocs = [];
+  Duration elapsedTime = const Duration(seconds: 0);
+
+  void displayElapsedLocation() {
+    for (int i = 0; i < controller.locList.length - 1; i++) {
+      elapsedLocs.add(controller.locList[i].createdAt!);
+      totalDistance = Geolocator.distanceBetween(
+        double.parse(controller.locList[i].latitude!),
+        double.parse(controller.locList[i].longitude!),
+        double.parse(controller.locList[i + 1].latitude!),
+        double.parse(controller.locList[i + 1].longitude!),
+      );
+      if (totalDistance < 50) {
+        elapsedLocs.add(controller.locList[i + 1].createdAt!);
+      } else {
+        if (elapsedLocs.length >= 2) {
+          DateTime startTime = elapsedLocs.first;
+          DateTime endTime = elapsedLocs.last;
+          print("length: ${elapsedLocs.length}");
+          print("first date: $startTime");
+          print("second date: $endTime");
+          elapsedTime = endTime.difference(startTime);
+
+          _markers.add(
+            Marker(
+              infoWindow:
+                  InfoWindow(title: elapsedTime.toString().substring(0, 8)),
+              markerId: const MarkerId('aavboajv'),
+              position: LatLng(
+                double.parse(controller.locList[i].latitude!),
+                double.parse(controller.locList[i].longitude!),
+              ),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueOrange),
+            ),
+          );
+
+          // _markers
+          //     .addLabelMarker(LabelMarker(
+          //   label: 'sfdv0bsb',
+          //   markerId: MarkerId('marker_id${Random(10)}'),
+          //   position: LatLng(
+          //     double.parse(controller.locList[i].latitude!),
+          //     double.parse(controller.locList[i].longitude!),
+          //   ),
+          //   backgroundColor: Colors.green,
+          // ))
+          //     .then(
+          //   (value) {
+          //     setState(() {});
+          //   },
+          // );
+          _circles.add(
+            Circle(
+              circleId: const CircleId('cirle_id'),
+              fillColor: Colors.blue[200]!,
+              strokeWidth: 1,
+              strokeColor: Colors.black,
+              center: LatLng(
+                double.parse(controller.locList[i].latitude!),
+                double.parse(controller.locList[i].longitude!),
+              ),
+              radius: 50,
+            ),
+          );
+          totalDistance = 0;
+          setState(() {});
+          elapsedLocs.clear();
+        } else {
+          elapsedLocs.clear();
+        }
+      }
+    }
   }
 
   void setPolylines() {
@@ -101,6 +184,9 @@ class MapScreenState extends State<MapScreen> {
       ),
       icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow),
     );
+
+    _markers.add(startMarker);
+    _markers.add(endMarker);
   }
 
   @override
@@ -200,10 +286,8 @@ class MapScreenState extends State<MapScreen> {
                       child: GoogleMap(
                         myLocationButtonEnabled: true,
                         myLocationEnabled: true,
-                        markers: <Marker>{
-                          startMarker,
-                          endMarker,
-                        },
+                        circles: _circles,
+                        markers: _markers,
                         onMapCreated: (GoogleMapController controller) {
                           _controller.complete(controller);
                         },
