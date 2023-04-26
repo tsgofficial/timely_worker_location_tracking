@@ -63,199 +63,83 @@ class GetLocSocketEmit {
 
   Future<void> initSocket() async {
     socket.connect();
-    socket.onConnect((_) {
-      print('----- connected');
-      socket.emit("location", {
-        'latitude': 27.000,
-        'longitude': 126.0000,
-        'stay_time': 9999,
-        'user_id': 70872,
-        'created_at': DateTime.now().toString(),
+    socket.onConnect((_) async {
+      initialPos = await Geolocator.getCurrentPosition(
+        forceAndroidLocationManager: true,
+        desiredAccuracy: LocationAccuracy.best,
+      );
+      // print("got the first location $initialPos");
+
+      socketEmit(initialPos);
+
+      startTimer();
+
+      Timer.periodic(const Duration(seconds: 5), (timer) async {
+        // print("------- getting location");
+        do {
+          secondaryPos = await Geolocator.getCurrentPosition(
+            forceAndroidLocationManager: true,
+            desiredAccuracy: LocationAccuracy.best,
+          );
+        } while (secondaryPos.accuracy > 10 && secondaryPos.speed > 20);
+
+        // print("got the location $secondaryPos");
+
+        controller.distance.value = Geolocator.distanceBetween(
+          initialPos.latitude,
+          initialPos.longitude,
+          secondaryPos.latitude,
+          secondaryPos.longitude,
+        );
+
+        print("distance ni ${controller.distance.value}");
+
+        if (controller.distance.value > 25) {
+          // print("_____ distance filter worked & got the loc ______");
+          if (mapScreenController.isDeviceConnected.value) {
+            socketEmit(secondaryPos);
+            resetTimer();
+            initialPos = secondaryPos;
+            // print(chalk.red('______ emitted location _________'));
+          } else {
+            saveLocInList(secondaryPos);
+            resetTimer();
+            initialPos = secondaryPos;
+            // print("_____ saved loc in list ${locList.last}");
+          }
+          initialPos = secondaryPos;
+        } else {
+          // print("_____ distance filter worked & skipped ______");
+        }
       });
-      // emitIfDeviceHasConnection();
-      // startTimer();
-
-      // Position pos = await Geolocator.getCurrentPosition();
-
-      var locationData = {
-        'latitude': 37.4219983,
-        'longitude': -122.084,
-        'stay_time': 247,
-        'user_id': 70872,
-        'created_at': DateTime.now().toString(),
-      };
-
-      print("datetime ${DateTime.now()}");
-
-      socket.emit("location", {
-        'latitude': 27.000,
-        'longitude': 126.0000,
-        'stay_time': 9999,
-        'user_id': 70872,
-        'created_at': DateTime.now().toString(),
-      });
-
-      // initialPos = pos;
-      // Duration duration = const Duration(seconds: 3);
-
-      // Timer.periodic(duration, (timer) async {
-      //   secondaryPos = await Geolocator.getCurrentPosition();
-      //   print("2nd pos: $secondaryPos");
-
-      //   var locationData = {
-      //     'latitude': secondaryPos.latitude,
-      //     'longitude': secondaryPos.longitude,
-      //     'stay_time': 222,
-      //     'user_id': 70872,
-      //     'created_at': DateTime.now().toString(),
-      //   };
-
-      //   socket.emit("location", locationData);
-
-      // if (controller.distance.value > 1) {
-      //   if (mapScreenController.isDeviceConnected.value) {
-      //     var locationData = {
-      //       'latitude': secondaryPos.latitude,
-      //       'longitude': secondaryPos.longitude,
-      //       'stay_time': controller.time.value,
-      //       'user_id': 70872,
-      //       'created_at': DateTime.now().toString(),
-      //     };
-      //     socket.emit("location", locationData);
-
-      //     resetTimer();
-      //     initialPos = secondaryPos;
-      //     print("___ emitted location ______");
-      //   } else {
-      //     saveLocInList(
-      //         LatLng(secondaryPos.latitude, secondaryPos.longitude));
-      //     initialPos = secondaryPos;
-      //   }
-      // } else {
-      //   print("_____ skipped position _____");
-      // }
-      // });
-
-      // var location = {
-      //   'latitude': pos.latitude,
-      //   'longitude': pos.longitude,
-      //   'stay_time': controller.time.value,
-      //   'user_id': 70872,
-      //   'created_at': DateTime.now().toString(),
-      // };
-
-      // socket.emit("location", location);
-
-      // locationUpdate();
     });
   }
 
-  void emit() {
+  void socketEmit(Position latlng) {
     var locationData = {
-      'latitude': 37.4219983,
-      'longitude': -122.084,
-      'stay_time': 247,
+      'latitude': latlng.latitude,
+      'longitude': latlng.longitude,
+      // 'stay_time': controller.time.value,
       'user_id': 70872,
       'created_at': DateTime.now().toString(),
     };
     socket.emit("location", locationData);
   }
 
-  Future<void> locationUpdate() async {
-    print("location update started !!!");
-
-    do {
-      position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-        forceAndroidLocationManager: true,
-      );
-    } while (position.speed > 20 && position.accuracy > 10);
-
-    initialPos = position;
-    print("got the initial position $initialPos");
-    // emitPosition(LatLng(initialPos.latitude, initialPos.longitude));
-
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.best,
-        // distanceFilter: 0,
-      ),
-    ).listen((Position newPosition) {
-      print("got new position");
-      // if (newPosition.speed < 20 && newPosition.accuracy < 10) {
-      secondaryPos = newPosition;
-      print("got the secondary position: $secondaryPos");
-
-      controller.distance.value = Geolocator.distanceBetween(
-        initialPos.latitude,
-        initialPos.longitude,
-        secondaryPos.latitude,
-        secondaryPos.longitude,
-      );
-
-      print("estimated distance: ${controller.distance.value}");
-
-      if (controller.distance.value > 1) {
-        if (mapScreenController.isDeviceConnected.value) {
-          var locationData = {
-            'latitude': secondaryPos.latitude,
-            'longitude': secondaryPos.longitude,
-            'stay_time': controller.time.value,
-            'user_id': 70872,
-            'created_at': DateTime.now().toString(),
-          };
-          socket.emit("location", locationData);
-          socket.on("location", (data) {
-            print("location res data: $data");
-          });
-          resetTimer();
-          initialPos = secondaryPos;
-          print("___ emitted location ______");
-        } else {
-          saveLocInList(LatLng(secondaryPos.latitude, secondaryPos.longitude));
-          initialPos = secondaryPos;
-        }
-
-        // print("emitted ")
-      } else {
-        print("_____ skipped position _____");
-      }
-    });
-  }
-
-  // void emitPosition(LatLng latLng) {
-  //   var locationData = {
-  //     'latitude': latLng.latitude,
-  //     'longitude': latLng.longitude,
-  //     'stay_time': controller.time.value,
-  //     'user_id': 70872,
-  //     'created_at': DateTime.now().toString(),
-  //   };
-  //   socket.emit('location', locationData);
-  //   resetTimer();
-  //   print("____________ emitted location ____________");
-  // }
-
   void stopLocationTracking() {
-    _positionStream.cancel();
-    timer.cancel();
+    // _positionStream.cancel();
     socket.disconnect();
     print("stopped location tracking & timer");
   }
 
-  void saveLocInList(LatLng latlng) {
-    if (controller.distance.value > 15) {
-      locList.add({
-        'latitude': latlng.latitude,
-        'longitude': latlng.longitude,
-        'stay_time': controller.time.value,
-        'user_id': 70872,
-        'created_at': DateTime.now().toString(),
-      });
-      print('----- saved locs in list ${locList.last}');
-      resetTimer();
-      initialPos = secondaryPos;
-    }
+  void saveLocInList(Position latlng) {
+    locList.add({
+      'latitude': latlng.latitude,
+      'longitude': latlng.longitude,
+      // 'stay_time': controller.time.value,
+      'user_id': 70872,
+      'created_at': DateTime.now().toString(),
+    });
   }
 
   void emitIfDeviceHasConnection() {
@@ -280,9 +164,9 @@ class GetLocSocketEmit {
         );
 
         var locationData = {
-          'latitude': 47.9999999,
-          'longitude': 106.9999999,
-          'stay_time': 9999999,
+          'latitude': 199.99999,
+          'longitude': 99.99999,
+          // 'stay_time': ,
           'user_id': 70872,
           'created_at': DateTime.now().toString(),
         };
@@ -294,6 +178,8 @@ class GetLocSocketEmit {
         print(chalk.red.onBlack(
             "New position $position received in the background at ${DateTime.now()} and emitted !!!"));
       });
+      socket.disconnect();
+      print("_____ disconnected from socket ______");
     } catch (e) {
       print("error message: ${e.toString}");
     }

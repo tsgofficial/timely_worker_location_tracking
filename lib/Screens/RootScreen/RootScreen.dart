@@ -1,9 +1,10 @@
 import 'dart:async';
-
+import 'dart:typed_data';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
+import 'package:google_maps_pro/Components/CustomMarker.dart';
 import 'dart:io' show Platform;
 import 'package:google_maps_pro/Components/Functions.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 import '../../Components/CustomColors.dart';
+import '../../Repos/MarkerGenerator.dart';
 import '../MapScreen.dart';
 
 class RootScreen extends StatefulWidget {
@@ -60,17 +62,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    socket.connect();
-    socket.onConnect((_) {
-      print('----- connected');
-      socket.emit("location", {
-        'latitude': 48.00000,
-        'longitude': 127.00000,
-        'stay_time': 9999,
-        'user_id': 70872,
-        'created_at': DateTime.now().toString(),
-      });
-    });
+
     WidgetsBinding.instance.addObserver(this);
     getConnectivity();
     Functions().reqPermission();
@@ -87,6 +79,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
         setMarkers();
         getLocsFromAPI();
         estimateInitialTimeAndDistance();
+        displayElapsedLocation();
         if (isWorkerAtWork == true) {
           setState(() {
             _elapsedTime += DateTime.now().difference(DateTime.parse(
@@ -135,9 +128,154 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     if (_appLifecycleState == AppLifecycleState.inactive ||
         _appLifecycleState == AppLifecycleState.paused) {
       // Perform background fetch task here
-      const int alarmID = 0;
-      // await AndroidAlarmManager.periodic(
-      //     const Duration(minutes: 1), alarmID, getLocation);
+    }
+  }
+
+  double elapsedTotalDistance = 0;
+  // int elapsedCounter = 0;
+
+  List<DateTime> elapsedLocs = [];
+  Duration elapsedTime = const Duration(seconds: 0);
+
+  final Set<Circle> _circles = {};
+  int elapsedIndex = 0;
+
+  List<Marker> customMarkers = [];
+  List<MapMarker> markerWidgets = [];
+  List<Marker> mapBitmapsToMarkers(List<Uint8List> bitmaps, position) {
+    bitmaps.asMap().forEach((i, bmp) {
+      customMarkers.add(Marker(
+        markerId: MarkerId("$i"),
+        position: position,
+        icon: BitmapDescriptor.fromBytes(bmp),
+      ));
+    });
+    return customMarkers;
+  }
+
+  void displayElapsedLocation() async {
+    print("length of the all list: ${locDataController.locList.length}");
+    for (int i = 1; i < locDataController.locList.length; i++) {
+      elapsedLocs.add(locDataController.locList[elapsedIndex].createdAt!);
+      elapsedTotalDistance = Geolocator.distanceBetween(
+        double.parse(locDataController.locList[elapsedIndex].latitude!),
+        double.parse(locDataController.locList[elapsedIndex].longitude!),
+        double.parse(locDataController.locList[i].latitude!),
+        double.parse(locDataController.locList[i].longitude!),
+      );
+      print('each distance: $elapsedTotalDistance');
+      if (elapsedTotalDistance < 50) {
+        elapsedLocs.add(locDataController.locList[i].createdAt!);
+        print("length of the list: ${elapsedLocs.length}");
+        if (elapsedLocs.contains(locDataController.locList.last.createdAt!)) {
+          if (elapsedLocs.length >= 2) {
+            DateTime startTime = elapsedLocs.first;
+            DateTime endTime = elapsedLocs.last;
+            print("length: ${elapsedLocs.length}");
+            print("first date: $startTime");
+            print("second date: $endTime");
+            elapsedTime = endTime.difference(startTime);
+
+            markerWidgets.add(MapMarker(elapsedTime.toString()));
+
+            MarkerGenerator(markerWidgets, (bitmaps) {
+              setState(() {
+                mapBitmapsToMarkers(
+                  bitmaps,
+                  LatLng(
+                    double.parse(locDataController.locList[i].latitude!),
+                    double.parse(locDataController.locList[i].longitude!),
+                  ),
+                );
+              });
+            }).generate(context);
+
+            _markers.add(
+              Marker(
+                infoWindow:
+                    InfoWindow(title: elapsedTime.toString().substring(0, 8)),
+                markerId: const MarkerId('aavboajv'),
+                position: LatLng(
+                  double.parse(
+                      locDataController.locList[elapsedIndex].latitude!),
+                  double.parse(
+                      locDataController.locList[elapsedIndex].longitude!),
+                ),
+                icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueOrange),
+              ),
+            );
+            _circles.add(
+              Circle(
+                circleId: const CircleId('cirle_id'),
+                fillColor: Colors.blue[200]!,
+                strokeWidth: 1,
+                strokeColor: Colors.black,
+                center: LatLng(
+                  double.parse(
+                      locDataController.locList[elapsedIndex].latitude!),
+                  double.parse(
+                      locDataController.locList[elapsedIndex].longitude!),
+                ),
+                radius: 50,
+              ),
+            );
+            // elapsedLocs.clear();
+            // elapsedIndex = i;
+            // setState(() {});
+          } else {
+            elapsedLocs.clear();
+            elapsedIndex = i;
+            setState(() {});
+          }
+        }
+      } else {
+        print("length ni: ${elapsedLocs.length}");
+        if (elapsedLocs.length >= 2) {
+          DateTime startTime = elapsedLocs.first;
+          DateTime endTime = elapsedLocs.last;
+          print("length: ${elapsedLocs.length}");
+          print("first date: $startTime");
+          print("second date: $endTime");
+          elapsedTime = endTime.difference(startTime);
+
+          _markers.add(
+            Marker(
+              infoWindow:
+                  InfoWindow(title: elapsedTime.toString().substring(0, 8)),
+              markerId: const MarkerId('aavboajv'),
+              position: LatLng(
+                double.parse(locDataController.locList[elapsedIndex].latitude!),
+                double.parse(
+                    locDataController.locList[elapsedIndex].longitude!),
+              ),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueOrange),
+            ),
+          );
+          _circles.add(
+            Circle(
+              circleId: const CircleId('cirle_id'),
+              fillColor: Colors.blue[200]!,
+              strokeWidth: 1,
+              strokeColor: Colors.black,
+              center: LatLng(
+                double.parse(locDataController.locList[elapsedIndex].latitude!),
+                double.parse(
+                    locDataController.locList[elapsedIndex].longitude!),
+              ),
+              radius: 50,
+            ),
+          );
+          elapsedLocs.clear();
+          elapsedIndex = i;
+          setState(() {});
+        } else {
+          elapsedLocs.clear();
+          elapsedIndex = i;
+          setState(() {});
+        }
+      }
     }
   }
 
@@ -281,14 +419,10 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
             ),
     ).listen((Position newPosition) {
       // print("receiving location stream $newPosition");
-      if (newPosition.accuracy < 5 && newPosition.speed < 15) {
+      if (newPosition.accuracy < 10 && newPosition.speed < 20) {
         setState(() {
           _previousPosition = _currentPosition;
           _currentPosition = newPosition;
-          // var s = KalmanFilter.filter(
-          //   [_previousPosition.latitude, _previousPosition.longitude],
-          //   [_currentPosition.latitude, _currentPosition.longitude],
-          // );
           _points.add(
               LatLng(_currentPosition.latitude, _currentPosition.longitude));
           _polylinesStream.add(Polyline(
@@ -386,11 +520,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                               ),
                             ),
                             Text(
-                              totalDistance.toString().length < 3
-                                  ? "${totalDistance.toString()} km"
-                                  : totalDistance.toString().length == 3
-                                      ? '${totalDistance.toString().substring(0, 3)} km'
-                                      : '${totalDistance.toString().substring(0, 4)} km',
+                              "${totalDistance.toStringAsFixed(2)} km",
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -410,7 +540,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                               ),
                             ),
                             Text(
-                              "${_elapsedTime.toString().substring(0, 8)} ц",
+                              "${_elapsedTime.inHours} h ${_elapsedTime.inMinutes.remainder(60)} m ${_elapsedTime.inSeconds.remainder(60)} s",
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -435,10 +565,11 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                       GoogleMap(
                         myLocationButtonEnabled: true,
                         myLocationEnabled: true,
-                        markers: Set<Marker>.of(_markers),
+                        markers: customMarkers.toSet(),
                         onMapCreated: (GoogleMapController controller) {
                           _controller.complete(controller);
                         },
+                        circles: _circles,
                         polylines: _polylinesStream,
                         initialCameraPosition: _initialCameraPosition,
                         mapType: MapType.normal,

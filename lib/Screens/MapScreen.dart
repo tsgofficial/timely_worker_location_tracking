@@ -67,22 +67,64 @@ class MapScreenState extends State<MapScreen> {
 
   double totalDistance = 0;
   int counter = 0;
-  // int initialIndex = 0;
 
   List<DateTime> elapsedLocs = [];
   Duration elapsedTime = const Duration(seconds: 0);
+  int elapsedIndex = 0;
 
   void displayElapsedLocation() {
-    for (int i = 0; i < controller.locList.length - 1; i++) {
-      elapsedLocs.add(controller.locList[i].createdAt!);
+    for (int i = 1; i < controller.locList.length; i++) {
+      elapsedLocs.add(controller.locList[elapsedIndex].createdAt!);
       totalDistance = Geolocator.distanceBetween(
+        double.parse(controller.locList[elapsedIndex].latitude!),
+        double.parse(controller.locList[elapsedIndex].longitude!),
         double.parse(controller.locList[i].latitude!),
         double.parse(controller.locList[i].longitude!),
-        double.parse(controller.locList[i + 1].latitude!),
-        double.parse(controller.locList[i + 1].longitude!),
       );
       if (totalDistance < 50) {
-        elapsedLocs.add(controller.locList[i + 1].createdAt!);
+        elapsedLocs.add(controller.locList[i].createdAt!);
+        if (elapsedLocs.contains(controller.locList.last.createdAt)) {
+          if (elapsedLocs.length >= 2) {
+            DateTime startTime = elapsedLocs.first;
+            DateTime endTime = elapsedLocs.last;
+            print("length: ${elapsedLocs.length}");
+            print("first date: $startTime");
+            print("second date: $endTime");
+            elapsedTime = endTime.difference(startTime);
+
+            _markers.add(
+              Marker(
+                infoWindow:
+                    InfoWindow(title: elapsedTime.toString().substring(0, 8)),
+                markerId: const MarkerId('aavboajv'),
+                position: LatLng(
+                  double.parse(controller.locList[elapsedIndex].latitude!),
+                  double.parse(controller.locList[elapsedIndex].longitude!),
+                ),
+                icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueOrange),
+              ),
+            );
+            _circles.add(
+              Circle(
+                circleId: const CircleId('cirle_id'),
+                fillColor: Colors.blue[200]!,
+                strokeWidth: 1,
+                strokeColor: Colors.black,
+                center: LatLng(
+                  double.parse(controller.locList[elapsedIndex].latitude!),
+                  double.parse(controller.locList[elapsedIndex].longitude!),
+                ),
+                radius: 50,
+              ),
+            );
+            // elapsedLocs.clear();
+          } else {
+            elapsedLocs.clear();
+            elapsedIndex = i;
+            setState(() {});
+          }
+        }
       } else {
         if (elapsedLocs.length >= 2) {
           DateTime startTime = elapsedLocs.first;
@@ -98,29 +140,13 @@ class MapScreenState extends State<MapScreen> {
                   InfoWindow(title: elapsedTime.toString().substring(0, 8)),
               markerId: const MarkerId('aavboajv'),
               position: LatLng(
-                double.parse(controller.locList[i].latitude!),
-                double.parse(controller.locList[i].longitude!),
+                double.parse(controller.locList[elapsedIndex].latitude!),
+                double.parse(controller.locList[elapsedIndex].longitude!),
               ),
               icon: BitmapDescriptor.defaultMarkerWithHue(
                   BitmapDescriptor.hueOrange),
             ),
           );
-
-          // _markers
-          //     .addLabelMarker(LabelMarker(
-          //   label: 'sfdv0bsb',
-          //   markerId: MarkerId('marker_id${Random(10)}'),
-          //   position: LatLng(
-          //     double.parse(controller.locList[i].latitude!),
-          //     double.parse(controller.locList[i].longitude!),
-          //   ),
-          //   backgroundColor: Colors.green,
-          // ))
-          //     .then(
-          //   (value) {
-          //     setState(() {});
-          //   },
-          // );
           _circles.add(
             Circle(
               circleId: const CircleId('cirle_id'),
@@ -128,18 +154,18 @@ class MapScreenState extends State<MapScreen> {
               strokeWidth: 1,
               strokeColor: Colors.black,
               center: LatLng(
-                double.parse(controller.locList[i].latitude!),
-                double.parse(controller.locList[i].longitude!),
+                double.parse(controller.locList[elapsedIndex].latitude!),
+                double.parse(controller.locList[elapsedIndex].longitude!),
               ),
               radius: 50,
             ),
           );
-          totalDistance = 0;
-          setState(() {});
           elapsedLocs.clear();
         } else {
           elapsedLocs.clear();
         }
+        elapsedIndex = i + 1;
+        setState(() {});
       }
     }
   }
