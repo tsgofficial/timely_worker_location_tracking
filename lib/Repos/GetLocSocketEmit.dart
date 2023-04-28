@@ -14,6 +14,27 @@ class GetLocSocketEmit {
   IO.Socket socket = IO.io('http://16.162.14.221:4000/', <String, dynamic>{
     'transports': ['websocket'],
   });
+
+  // void socketConnect() async {
+  //   SocketIOManager manager = SocketIOManager();
+  //   // SocketIO a = manager.
+  //   SocketIO socketIO =
+  //       manager.createSocketIO('http://16.162.14.221:4000', '/');
+
+  //   socketIO.init();
+
+  //   var locationData = {
+  //     'latitude': 199.99999,
+  //     'longitude': 99.99999,
+  //     // 'stay_time': ,
+  //     'user_id': 70872,
+  //     'created_at': DateTime.now().toString(),
+  //   };
+
+  //   socketIO.sendMessage("location", locationData);
+  // }
+
+  // final web_socket = WebsocketManager("http://16.162.14.221:4000/");
   late Position initialPos;
   late Position secondaryPos;
   List<LatLng> locs = [];
@@ -154,8 +175,34 @@ class GetLocSocketEmit {
 
   // for background location service !!!
   void emitFromBackground() async {
-    try {
+    print("function called and started working!");
+    if (socket.connected) {
+      print(chalk.red.onBlack("socket was connected !!!"));
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+        forceAndroidLocationManager: true,
+      );
+
+      var locationData = {
+        'latitude': 199.99999,
+        'longitude': 99.99999,
+        // 'stay_time': ,
+        'user_id': 70872,
+        'created_at': DateTime.now().toString(),
+      };
+      socket.emit('location', locationData);
+
+      print(chalk.red.onBlack(
+          "New position $position received in the background at ${DateTime.now()} and emitted !!!"));
+    } else {
+      print("socket was not connected");
       socket.connect();
+      if (socket.connected) {
+        print("connected");
+      } else {
+        socket.connect();
+        print("was not connected");
+      }
       socket.onConnect((data) async {
         print(chalk.red.onBlack("socket connected !!!"));
         Position position = await Geolocator.getCurrentPosition(
@@ -171,17 +218,12 @@ class GetLocSocketEmit {
           'created_at': DateTime.now().toString(),
         };
         socket.emit('location', locationData);
-        socket.on("location", (data) {
-          print("location res data: $data");
-        });
 
         print(chalk.red.onBlack(
             "New position $position received in the background at ${DateTime.now()} and emitted !!!"));
       });
       socket.disconnect();
       print("_____ disconnected from socket ______");
-    } catch (e) {
-      print("error message: ${e.toString}");
     }
   }
 }

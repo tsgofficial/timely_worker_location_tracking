@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'package:chalkdart/chalk.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_pro/Components/CustomMarker.dart';
@@ -18,6 +20,7 @@ import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 import '../../Components/CustomColors.dart';
+import '../../Repos/BackgroundService.dart';
 import '../../Repos/MarkerGenerator.dart';
 import '../MapScreen.dart';
 
@@ -57,11 +60,40 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   IO.Socket socket = IO.io('http://16.162.14.221:4000/', <String, dynamic>{
     'transports': ['websocket'],
   });
-  AppLifecycleState? _appLifecycleState;
+
+  // Future<void> disableCapture() async {
+  //   //disable screenshots and record screen in current screen
+  //   await FlutterWindowManager.addFlags(FlutterWindowManager.FLAG_SECURE);
+  // }
+
+  // final disableScreenshot = NoScreenshot.instance;
+
+  // final ScreenCaptureEvent screenListener = ScreenCaptureEvent();
 
   @override
   void initState() {
     super.initState();
+    // disableScreenshot.screenshotOff();
+
+    // screenListener.addScreenShotListener((filePath) {
+    //   print("file is stored in $filePath");
+    //   showDialog(
+    //       context: context,
+    //       builder: (context) {
+    //         return AlertDialog(
+    //           title: const Text('Хүүе яах гэж байна?'),
+    //           content: const Text('Шалгалтын үеэр screenshot хийх хориотой!!!'),
+    //           actions: [
+    //             TextButton(
+    //                 onPressed: () {
+    //                   Navigator.pop(context);
+    //                 },
+    //                 child: const Text('Хаах'))
+    //           ],
+    //         );
+    //       });
+    // });
+    // screenListener.watch();
 
     WidgetsBinding.instance.addObserver(this);
     getConnectivity();
@@ -117,17 +149,50 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     subscription.cancel();
     _positionStream.cancel();
     _timer.cancel();
+    // screenListener.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
-    setState(() {
-      _appLifecycleState = state;
-    });
-    if (_appLifecycleState == AppLifecycleState.inactive ||
-        _appLifecycleState == AppLifecycleState.paused) {
-      // Perform background fetch task here
+    switch (state) {
+      case AppLifecycleState.resumed:
+        print('resumed');
+        socket.disconnect();
+        break;
+      case AppLifecycleState.inactive:
+        print('inactive');
+        socket.disconnect();
+        break;
+      case AppLifecycleState.paused:
+        {
+          print('paused');
+          await initializeService();
+          FlutterBackgroundService().invoke("setAsForeground");
+          socket.connect();
+          socket.onConnect((data) {
+            Timer.periodic(const Duration(minutes: 1), (timer) async {
+              print(chalk.red.onBlack("dondog"));
+              Position pos = await Geolocator.getCurrentPosition();
+              print(chalk.red.onBlack("pos ni $pos"));
+
+              var locationData = {
+                'latitude': pos.latitude,
+                'longitude': pos.longitude,
+                // 'stay_time': ,
+                'user_id': 70872,
+                'created_at': DateTime.now().toString(),
+              };
+
+              socket.emit("location", locationData);
+            });
+          });
+        }
+        // GetLocSocketEmit().emitFromBackground();
+        break;
+      case AppLifecycleState.detached:
+        print('detached');
+        break;
     }
   }
 
@@ -192,8 +257,6 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
 
             _markers.add(
               Marker(
-                infoWindow:
-                    InfoWindow(title: elapsedTime.toString().substring(0, 8)),
                 markerId: const MarkerId('aavboajv'),
                 position: LatLng(
                   double.parse(
@@ -419,10 +482,20 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
             ),
     ).listen((Position newPosition) {
       // print("receiving location stream $newPosition");
-      if (newPosition.accuracy < 10 && newPosition.speed < 20) {
+      if (newPosition.accuracy < 10 &&
+          newPosition.speed < 20 &&
+          newPosition.speedAccuracy < 1) {
         setState(() {
           _previousPosition = _currentPosition;
           _currentPosition = newPosition;
+        });
+        double distance = Geolocator.distanceBetween(
+          _previousPosition.latitude,
+          _previousPosition.longitude,
+          _currentPosition.latitude,
+          _currentPosition.longitude,
+        );
+        if (distance < 15) {
           _points.add(
               LatLng(_currentPosition.latitude, _currentPosition.longitude));
           _polylinesStream.add(Polyline(
@@ -440,14 +513,8 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
               BitmapDescriptor.hueYellow,
             ),
           );
-        });
-        double distance = Geolocator.distanceBetween(
-          _previousPosition.latitude,
-          _previousPosition.longitude,
-          _currentPosition.latitude,
-          _currentPosition.longitude,
-        );
-        totalDistance += distance / 1000;
+          totalDistance += distance / 1000;
+        }
         // print("got high accuracy position");
       } else {
         // print("skipped a low position!");

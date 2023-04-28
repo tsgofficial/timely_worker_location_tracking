@@ -15,9 +15,9 @@ class MapMarker extends StatelessWidget {
           Container(
             height: 40.0,
             decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.green,
                 border: Border.all(
-                  color: Colors.white,
+                  color: Colors.green,
                 ),
                 borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(14),
@@ -26,10 +26,10 @@ class MapMarker extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(0.0, 8.0, 0.0, 8.0),
                 child: Text(
-                  name,
+                  name.substring(0, 8),
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      color: Colors.green,
+                      color: Colors.white,
                       fontSize: 14.0,
                       fontWeight: FontWeight.bold),
                 ),
