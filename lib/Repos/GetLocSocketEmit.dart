@@ -7,6 +7,7 @@ import 'package:google_maps_pro/Controller/MapScreenController.dart';
 import 'package:logger/logger.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
+import '../Components/LocationPermissionDialog.dart';
 import '../Controller/SocketController.dart';
 
 class GetLocSocketEmit {
@@ -14,27 +15,6 @@ class GetLocSocketEmit {
   IO.Socket socket = IO.io('http://16.162.14.221:4000/', <String, dynamic>{
     'transports': ['websocket'],
   });
-
-  // void socketConnect() async {
-  //   SocketIOManager manager = SocketIOManager();
-  //   // SocketIO a = manager.
-  //   SocketIO socketIO =
-  //       manager.createSocketIO('http://16.162.14.221:4000', '/');
-
-  //   socketIO.init();
-
-  //   var locationData = {
-  //     'latitude': 199.99999,
-  //     'longitude': 99.99999,
-  //     // 'stay_time': ,
-  //     'user_id': 70872,
-  //     'created_at': DateTime.now().toString(),
-  //   };
-
-  //   socketIO.sendMessage("location", locationData);
-  // }
-
-  // final web_socket = WebsocketManager("http://16.162.14.221:4000/");
   late Position initialPos;
   late Position secondaryPos;
   List<LatLng> locs = [];
@@ -79,6 +59,12 @@ class GetLocSocketEmit {
       return Future.error(
           'Location permissions are permanently denied, we cannot request permissions.');
     }
+
+    if (permission != LocationPermission.always) {
+      print(chalk.yellow.onBlack("loc per is not always"));
+      const LocationPermissionDialog();
+    }
+
     initSocket();
   }
 

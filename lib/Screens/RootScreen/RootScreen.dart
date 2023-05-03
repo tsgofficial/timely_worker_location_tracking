@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_maps_pro/Controller/LocationDataController.dart';
 import 'package:google_maps_pro/Controller/MapScreenController.dart';
+import 'package:google_maps_pro/Repos/Accelerometer.dart';
 import 'package:google_maps_pro/Repos/GetLocSocketEmit.dart';
 import 'package:google_maps_pro/Screens/SearchScreen.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
@@ -20,9 +21,10 @@ import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 import '../../Components/CustomColors.dart';
+import '../../Components/LocationPermissionDialog.dart';
 import '../../Repos/BackgroundService.dart';
-import '../../Repos/MarkerGenerator.dart';
-import '../MapScreen.dart';
+import '../../Repos/Globals.dart';
+import '../../Repos/WorkManager.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({
@@ -52,50 +54,26 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   double totalDistance = 0;
   bool isSetMarkers = false;
   bool isUserPressedYvlaa = false;
+  Timer? backgroundTimer;
   CameraPosition _initialCameraPosition = const CameraPosition(
     target: LatLng(47.920476, 106.917490),
     zoom: 16,
   );
-  bool isWorkerAtWork = false;
   IO.Socket socket = IO.io('http://16.162.14.221:4000/', <String, dynamic>{
     'transports': ['websocket'],
   });
 
-  // Future<void> disableCapture() async {
-  //   //disable screenshots and record screen in current screen
-  //   await FlutterWindowManager.addFlags(FlutterWindowManager.FLAG_SECURE);
-  // }
+  void checkPermission() async {
+    permission = await Geolocator.checkPermission();
 
-  // final disableScreenshot = NoScreenshot.instance;
-
-  // final ScreenCaptureEvent screenListener = ScreenCaptureEvent();
+    print("permission $permission");
+  }
 
   @override
   void initState() {
     super.initState();
-    // disableScreenshot.screenshotOff();
-
-    // screenListener.addScreenShotListener((filePath) {
-    //   print("file is stored in $filePath");
-    //   showDialog(
-    //       context: context,
-    //       builder: (context) {
-    //         return AlertDialog(
-    //           title: const Text('Хүүе яах гэж байна?'),
-    //           content: const Text('Шалгалтын үеэр screenshot хийх хориотой!!!'),
-    //           actions: [
-    //             TextButton(
-    //                 onPressed: () {
-    //                   Navigator.pop(context);
-    //                 },
-    //                 child: const Text('Хаах'))
-    //           ],
-    //         );
-    //       });
-    // });
-    // screenListener.watch();
-
     WidgetsBinding.instance.addObserver(this);
+    checkPermission();
     getConnectivity();
     Functions().reqPermission();
     locDataController
@@ -103,8 +81,8 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
       99999,
       '1',
       70872,
-      DateFormat('yyyy-MM-dd')
-          .parse(DateTime.now().toString().substring(0, 10)),
+      DateTime.now(),
+      // DateFormat('yyyy-MM-dd').parse(DateTime.now().toString()),
     )
         .whenComplete(() {
       if (locDataController.locList.isNotEmpty) {
@@ -126,7 +104,6 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
               ),
               zoom: 16,
             );
-            // goToPosition(_initialCameraPosition);
           });
         }
       }
@@ -143,13 +120,21 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _showDialog(BuildContext context) async {
+    return showDialog<void>(
+      context: context,
+      builder: (context) {
+        return const LocationPermissionDialog();
+      },
+    );
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     subscription.cancel();
     _positionStream.cancel();
     _timer.cancel();
-    // screenListener.dispose();
     super.dispose();
   }
 
@@ -158,6 +143,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.resumed:
         print('resumed');
+        backgroundTimer!.cancel();
         socket.disconnect();
         break;
       case AppLifecycleState.inactive:
@@ -165,30 +151,31 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
         socket.disconnect();
         break;
       case AppLifecycleState.paused:
-        {
-          print('paused');
+        print('paused');
+        if (isWorkerAtWork == true) {
           await initializeService();
           FlutterBackgroundService().invoke("setAsForeground");
           socket.connect();
           socket.onConnect((data) {
-            Timer.periodic(const Duration(minutes: 1), (timer) async {
+            print(chalk.yellow.onBlack('connected to socket in background!'));
+            backgroundTimer =
+                Timer.periodic(const Duration(seconds: 1), (timer) async {
               print(chalk.red.onBlack("dondog"));
               Position pos = await Geolocator.getCurrentPosition();
               print(chalk.red.onBlack("pos ni $pos"));
 
-              var locationData = {
-                'latitude': pos.latitude,
-                'longitude': pos.longitude,
-                // 'stay_time': ,
-                'user_id': 70872,
-                'created_at': DateTime.now().toString(),
-              };
+              // var locationData = {
+              //   'latitude': pos.latitude,
+              //   'longitude': pos.longitude,
+              //   // 'stay_time': ,
+              //   'user_id': 70872,
+              //   'created_at': DateTime.now().toString(),
+              // };
 
-              socket.emit("location", locationData);
+              // socket.emit("location", locationData);
             });
           });
         }
-        // GetLocSocketEmit().emitFromBackground();
         break;
       case AppLifecycleState.detached:
         print('detached');
@@ -197,6 +184,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   }
 
   double elapsedTotalDistance = 0;
+  LocationPermission? permission;
   // int elapsedCounter = 0;
 
   List<DateTime> elapsedLocs = [];
@@ -241,19 +229,19 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
             print("second date: $endTime");
             elapsedTime = endTime.difference(startTime);
 
-            markerWidgets.add(MapMarker(elapsedTime.toString()));
+            // markerWidgets.add(MapMarker(elapsedTime.toString()));
 
-            MarkerGenerator(markerWidgets, (bitmaps) {
-              setState(() {
-                mapBitmapsToMarkers(
-                  bitmaps,
-                  LatLng(
-                    double.parse(locDataController.locList[i].latitude!),
-                    double.parse(locDataController.locList[i].longitude!),
-                  ),
-                );
-              });
-            }).generate(context);
+            // MarkerGenerator(markerWidgets, (bitmaps) {
+            //   setState(() {
+            //     mapBitmapsToMarkers(
+            //       bitmaps,
+            //       LatLng(
+            //         double.parse(locDataController.locList[i].latitude!),
+            //         double.parse(locDataController.locList[i].longitude!),
+            //       ),
+            //     );
+            //   });
+            // }).generate(context);
 
             _markers.add(
               Marker(
@@ -524,6 +512,9 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    if (permission != LocationPermission.always) {
+      Future.delayed(Duration.zero, () => _showDialog(context));
+    }
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
@@ -632,7 +623,8 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                       GoogleMap(
                         myLocationButtonEnabled: true,
                         myLocationEnabled: true,
-                        markers: customMarkers.toSet(),
+                        // markers: customMarkers.toSet(),
+                        markers: _markers,
                         onMapCreated: (GoogleMapController controller) {
                           _controller.complete(controller);
                         },
@@ -645,44 +637,24 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                         },
                       ),
                       Positioned(
-                        top: 10,
-                        left: 10,
-                        child: IconButton(
-                          onPressed: () {
-                            Get.to(
-                              () => MapScreen(
-                                date: DateTime.now(),
-                                totalDistance: Functions().calculateDistance(),
-                                totalTime:
-                                    Functions().calculateTime().toString(),
-                              ),
-                            );
-                          },
-                          icon: const Icon(
-                            size: 35,
-                            Icons.zoom_in_map_outlined,
-                            color: Color(0xffF04262),
-                          ),
-                        ),
-                      ),
-                      Positioned(
                         bottom: 100,
                         left: 10,
                         child: InkWell(
                           onTap: () async {
-                            await GetLocSocketEmit().initSocket();
+                            await GetLocSocketEmit().checkPermission();
+                            WorkManager().registerTask();
+                            // await FlutterBackgroundService.start();
+                            Accelerometer().initAccelerometer();
+                            isWorkerAtWork = true;
+                            setState(() {});
+                            print('isWorkerAtWork: $isWorkerAtWork');
 
-                            if (!isWorkerAtWork) {
-                              _timer = Timer.periodic(
-                                  const Duration(seconds: 1), (Timer timer) {
-                                setState(() {
-                                  _elapsedTime =
-                                      _elapsedTime + const Duration(seconds: 1);
-                                });
+                            _timer = Timer.periodic(const Duration(seconds: 1),
+                                (Timer timer) {
+                              setState(() {
+                                _elapsedTime =
+                                    _elapsedTime + const Duration(seconds: 1);
                               });
-                            }
-                            setState(() {
-                              isWorkerAtWork = true;
                             });
                             // ignore: use_build_context_synchronously
                             showDialog(
@@ -728,9 +700,11 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                         child: InkWell(
                           onTap: () {
                             GetLocSocketEmit().stopLocationTracking();
-                            setState(() {
-                              isWorkerAtWork = false;
-                            });
+                            WorkManager().cancelTask();
+                            Accelerometer().cancelAccelerometer();
+                            isWorkerAtWork = false;
+                            setState(() {});
+                            print('isWorkerAtWork: $isWorkerAtWork');
                             _timer.cancel();
                             showDialog(
                                 context: context,
