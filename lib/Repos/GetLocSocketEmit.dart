@@ -1,13 +1,13 @@
+// ignore_for_file: file_names
+
 import 'dart:async';
+
 import 'package:chalkdart/chalk.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_maps_pro/Controller/MapScreenController.dart';
-import 'package:logger/logger.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
-
-import '../Components/LocationPermissionDialog.dart';
 import '../Controller/SocketController.dart';
 
 class GetLocSocketEmit {
@@ -23,9 +23,8 @@ class GetLocSocketEmit {
   Duration duration = const Duration(seconds: 1);
   late Timer timer;
   final mapScreenController = Get.put(MapScreenController());
-  var logger = Logger();
   late Position position;
-  late StreamSubscription<Position> _positionStream;
+  // late StreamSubscription<Position> _positionStream;
 
   void startTimer() {
     timer = Timer.periodic(duration, (timer) {
@@ -62,7 +61,6 @@ class GetLocSocketEmit {
 
     if (permission != LocationPermission.always) {
       print(chalk.yellow.onBlack("loc per is not always"));
-      const LocationPermissionDialog();
     }
 
     initSocket();

@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:chalkdart/chalk.dart';
@@ -6,7 +8,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
-import 'package:google_maps_pro/Components/CustomMarker.dart';
+// import 'package:google_maps_pro/Components/CustomMarker.dart';
 import 'dart:io' show Platform;
 import 'package:google_maps_pro/Components/Functions.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +23,6 @@ import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 import '../../Components/CustomColors.dart';
-import '../../Components/LocationPermissionDialog.dart';
 import '../../Repos/BackgroundService.dart';
 import '../../Repos/Globals.dart';
 import '../../Repos/WorkManager.dart';
@@ -120,15 +121,6 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _showDialog(BuildContext context) async {
-    return showDialog<void>(
-      context: context,
-      builder: (context) {
-        return const LocationPermissionDialog();
-      },
-    );
-  }
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -194,7 +186,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   int elapsedIndex = 0;
 
   List<Marker> customMarkers = [];
-  List<MapMarker> markerWidgets = [];
+  // List<MapMarker> markerWidgets = [];
   List<Marker> mapBitmapsToMarkers(List<Uint8List> bitmaps, position) {
     bitmaps.asMap().forEach((i, bmp) {
       customMarkers.add(Marker(
@@ -512,9 +504,10 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    if (permission != LocationPermission.always) {
-      Future.delayed(Duration.zero, () => _showDialog(context));
-    }
+    // if (permission != LocationPermission.always ||
+    //     permission != LocationPermission.whileInUse) {
+    //   Future.delayed(Duration.zero, () => _showDialog(context));
+    // }
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
@@ -755,13 +748,13 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                     color: CustomColors.MAIN_BLUE,
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
+                  child: const Padding(
+                    padding: EdgeInsets.all(8.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         Row(
-                          children: const [
+                          children: [
                             Icon(Icons.location_on, color: Colors.greenAccent),
                             Text(
                               "- эхлэсэн",
@@ -770,7 +763,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                           ],
                         ),
                         Row(
-                          children: const [
+                          children: [
                             Icon(Icons.location_on, color: Colors.yellowAccent),
                             Text(
                               "- дууссан",
